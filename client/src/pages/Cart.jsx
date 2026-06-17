@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { FiTrash2, FiMinus, FiPlus } from 'react-icons/fi';
 import { useCart } from '../context/CartContext';
+import { getImageUrl } from '../api';
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, totalPrice } = useCart();
@@ -28,7 +29,7 @@ export default function Cart() {
           >
             <div className="w-14 h-14 bg-gray-100 dark:bg-white/5 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
               {item.image ? (
-                <img src={item.image} alt={item.name} className="w-full h-full object-cover" />
+                <img src={getImageUrl(item.image)} alt={item.name} className="w-full h-full object-cover" />
               ) : (
                 <img src="/hit-logo.png" alt="" className="w-7 h-8 object-contain opacity-20" />
               )}

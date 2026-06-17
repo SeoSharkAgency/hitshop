@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FiShoppingCart, FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../api';
+import api, { getImageUrl } from '../api';
 import { useCart } from '../context/CartContext';
 
 export default function ProductPage() {
@@ -80,7 +80,7 @@ export default function ProductPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
         <div className="aspect-[4/5] bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden flex items-center justify-center">
           {product.image ? (
-            <img src={product.image} alt={product.name} className="w-full h-full object-cover" />
+            <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-cover" />
           ) : (
             <div className="w-full h-full flex items-center justify-center p-16">
               <img src="/hit-logo.png" alt="ФК Хіт" className="w-32 h-40 object-contain opacity-20" />

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
-import api from '../api';
+import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 
 export default function AdminDashboard() {
@@ -78,7 +78,7 @@ export default function AdminDashboard() {
               <div key={product.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 flex items-center gap-3">
                 <div className="w-12 h-12 bg-gray-100 dark:bg-white/5 rounded-lg overflow-hidden flex-shrink-0 flex items-center justify-center">
                   {product.image ? (
-                    <img src={product.image} alt="" className="w-full h-full object-cover" />
+                    <img src={getImageUrl(product.image)} alt="" className="w-full h-full object-cover" />
                   ) : (
                     <img src="/hit-logo.png" alt="" className="w-6 h-7 object-contain opacity-20" />
                   )}

@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { getImageUrl } from '../api';
 
 export default function ProductCard({ product }) {
   const rawSizes = typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes;
@@ -9,7 +10,7 @@ export default function ProductCard({ product }) {
       <div className="aspect-[4/5] relative overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-white/5">
         {product.image ? (
           <img
-            src={product.image}
+            src={getImageUrl(product.image)}
             alt={product.name}
             className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
           />
