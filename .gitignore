@@ -1,0 +1,10 @@
+node_modules
+dist
+.env
+server/uploads/*
+!server/uploads/.gitkeep
+.DS_Store
+
+IMG_4288.jpg
+bg.jpg
+ХІТ_PNG.png
