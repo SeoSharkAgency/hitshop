@@ -3,7 +3,7 @@ const { Order, OrderItem, Product, sequelize } = require('../models');
 exports.create = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { customerName, customerPhone, customerEmail, deliveryAddress, notes, items } = req.body;
+    const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryCityRef, deliveryWarehouseRef, deliveryCost, notes, items } = req.body;
 
     if (!customerName || !customerPhone) {
       await t.rollback();
@@ -66,8 +66,11 @@ exports.create = async (req, res) => {
       customerPhone: String(customerPhone).slice(0, 30),
       customerEmail: customerEmail ? String(customerEmail).slice(0, 200) : null,
       deliveryAddress: deliveryAddress ? String(deliveryAddress).slice(0, 500) : null,
+      deliveryCityRef: deliveryCityRef || null,
+      deliveryWarehouseRef: deliveryWarehouseRef || null,
+      deliveryCost: deliveryCost || 0,
       notes: notes ? String(notes).slice(0, 1000) : null,
-      total,
+      total: total + (parseFloat(deliveryCost) || 0),
       status: 'new',
       paymentStatus: 'pending',
     }, { transaction: t });
@@ -136,7 +139,7 @@ exports.updateStatus = async (req, res) => {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
 
-    const { status, paymentStatus } = req.body;
+    const { status, paymentStatus, ttnNumber } = req.body;
     const validStatuses = ['new', 'processing', 'shipped', 'delivered', 'cancelled'];
     const validPayment = ['pending', 'paid', 'failed', 'refunded'];
 
@@ -149,6 +152,7 @@ exports.updateStatus = async (req, res) => {
 
     if (status) order.status = status;
     if (paymentStatus) order.paymentStatus = paymentStatus;
+    if (ttnNumber) order.ttnNumber = String(ttnNumber).slice(0, 50);
     await order.save();
 
     const fullOrder = await Order.findByPk(order.id, {

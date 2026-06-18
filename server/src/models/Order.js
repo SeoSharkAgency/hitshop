@@ -46,6 +46,27 @@ const Order = sequelize.define('Order', {
     allowNull: true,
     field: 'delivery_address',
   },
+  deliveryCityRef: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'delivery_city_ref',
+  },
+  deliveryWarehouseRef: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'delivery_warehouse_ref',
+  },
+  deliveryCost: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    defaultValue: 0,
+    field: 'delivery_cost',
+  },
+  ttnNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'ttn_number',
+  },
   notes: {
     type: DataTypes.TEXT,
     allowNull: true,

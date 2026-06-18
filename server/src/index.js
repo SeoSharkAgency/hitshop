@@ -35,6 +35,7 @@ app.use('/api/categories', require('./routes/categories'));
 app.use('/api/orders', orderLimiter, require('./routes/orders'));
 app.use('/api/auth', authLimiter, require('./routes/auth'));
 app.use('/api/payments', require('./routes/payments'));
+app.use('/api/novaposhta', require('./routes/novaposhta'));
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', name: 'HitShop API' });

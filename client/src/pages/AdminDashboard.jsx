@@ -30,6 +30,28 @@ export default function AdminDashboard() {
     catch { toast.error('помилка'); }
   };
 
+  const handleCreateTTN = async (order) => {
+    try {
+      const res = await api.post('/novaposhta/create-ttn', {
+        orderId: order.id,
+        recipientCityRef: order.deliveryCityRef,
+        recipientWarehouseRef: order.deliveryWarehouseRef,
+        recipientName: order.customerName,
+        recipientPhone: order.customerPhone,
+        weight: '0.5',
+        cost: String(order.total),
+        description: `Замовлення ${order.orderNumber}`,
+      });
+      if (res.data.ttnNumber) {
+        await api.put(`/orders/${order.id}`, { ttnNumber: res.data.ttnNumber, status: 'shipped' });
+        toast.success(`ТТН створено: ${res.data.ttnNumber}`);
+        loadOrders();
+      }
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка створення ТТН');
+    }
+  };
+
   const pillClass = (active) => `flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all ${
     active
       ? 'bg-hit-yellow text-[#0a0e1a]'
@@ -152,6 +174,31 @@ export default function AdminDashboard() {
                       <option value="failed">відхилено</option>
                       <option value="refunded">повернено</option>
                     </select>
+                  </div>
+
+                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/5">
+                    {order.ttnNumber ? (
+                      <div className="flex items-center gap-2">
+                        <span className="text-gray-400 dark:text-white/40 text-xs">ТТН:</span>
+                        <a
+                          href={`https://novaposhta.ua/tracking/?cargo_number=${order.ttnNumber}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline"
+                        >
+                          {order.ttnNumber}
+                        </a>
+                      </div>
+                    ) : order.deliveryCityRef && order.deliveryWarehouseRef ? (
+                      <button
+                        onClick={() => handleCreateTTN(order)}
+                        className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+                      >
+                        📦 Створити ТТН
+                      </button>
+                    ) : (
+                      <p className="text-gray-300 dark:text-white/20 text-[10px]">НП дані відсутні</p>
+                    )}
                   </div>
                 </div>
               ))}
