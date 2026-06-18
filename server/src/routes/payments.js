@@ -18,17 +18,19 @@ router.post('/create', async (req, res) => {
     const merchantSecret = process.env.WAYFORPAY_MERCHANT_SECRET;
     const merchantDomain = process.env.WAYFORPAY_MERCHANT_DOMAIN;
     const orderDate = Math.floor(new Date(order.createdAt).getTime() / 1000);
+    const amount = parseFloat(order.total).toFixed(2);
+    const productPrice = amount;
 
     const params = [
       merchantLogin,
       merchantDomain,
       order.orderNumber,
       orderDate.toString(),
-      order.total.toString(),
+      amount,
       'UAH',
       `Замовлення ${order.orderNumber}`,
       '1',
-      order.total.toString(),
+      productPrice,
     ];
 
     const signature = generateSignature(params, merchantSecret);
@@ -39,18 +41,18 @@ router.post('/create', async (req, res) => {
       merchantSignature: signature,
       orderReference: order.orderNumber,
       orderDate: orderDate,
-      amount: parseFloat(order.total),
+      amount: amount,
       currency: 'UAH',
       productName: [`Замовлення ${order.orderNumber}`],
-      productCount: [1],
-      productPrice: [parseFloat(order.total)],
-      returnUrl: `${process.env.CLIENT_URL}/order-success/${order.id}`,
+      productCount: ['1'],
+      productPrice: [productPrice],
+      returnUrl: `${process.env.CLIENT_URL || merchantDomain}/order-success/${order.id}`,
       serviceUrl: `${merchantDomain}/api/payments/callback`,
     };
 
     res.json(formData);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Помилка створення платежу' });
   }
 });
 
