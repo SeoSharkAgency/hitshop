@@ -106,6 +106,7 @@ exports.create = async (req, res) => {
     res.status(201).json(fullOrder);
   } catch (err) {
     await t.rollback();
+    console.error('Order create error:', err.message);
     res.status(500).json({ error: 'Помилка створення замовлення' });
   }
 };
