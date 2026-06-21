@@ -19,6 +19,7 @@ async function npRequest(model, method, properties = {}) {
 }
 
 router.get('/cities', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const { q } = req.query;
     if (!q || q.length < 2) return res.json([]);
@@ -43,6 +44,7 @@ router.get('/cities', async (req, res) => {
 });
 
 router.get('/warehouses', async (req, res) => {
+  res.set('Cache-Control', 'no-store');
   try {
     const { cityRef, q } = req.query;
     if (!cityRef) return res.json([]);
