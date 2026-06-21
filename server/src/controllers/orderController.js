@@ -1,4 +1,5 @@
 const { Order, OrderItem, Product, sequelize } = require('../models');
+const { notifyNewOrder, notifyStatusChange } = require('../telegram');
 
 exports.create = async (req, res) => {
   const t = await sequelize.transaction();
@@ -103,6 +104,8 @@ exports.create = async (req, res) => {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],
     });
 
+    notifyNewOrder(fullOrder);
+
     res.status(201).json(fullOrder);
   } catch (err) {
     await t.rollback();
@@ -155,6 +158,9 @@ exports.updateStatus = async (req, res) => {
     if (paymentStatus) order.paymentStatus = paymentStatus;
     if (ttnNumber) order.ttnNumber = String(ttnNumber).slice(0, 50);
     await order.save();
+
+    if (status) notifyStatusChange(order, 'status', status);
+    if (paymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus);
 
     const fullOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],

@@ -5,6 +5,7 @@ const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
 const path = require('path');
 const { sequelize } = require('./models');
+const { startDailyReport } = require('./telegram');
 
 const app = express();
 
@@ -52,6 +53,7 @@ async function start() {
 
     app.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
+      startDailyReport();
     });
   } catch (err) {
     console.error('Failed to start server:', err);
