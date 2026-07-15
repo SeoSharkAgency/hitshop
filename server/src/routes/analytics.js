@@ -60,10 +60,15 @@ router.get('/summary', async (req, res) => {
 
     const paidOrders = await Order.count({ where: { ...where, paymentStatus: 'paid' } });
 
-    const itemsSold = await OrderItem.findOne({
-      attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('quantity')), 0), 'total']],
-      include: [{ model: Order, attributes: [], where: whereSuccess }],
-      raw: true,
+    const itemsResult = await sequelize.query(`
+      SELECT COALESCE(SUM(oi.quantity), 0) as total
+      FROM order_items oi
+      JOIN orders o ON o.id = oi.order_id
+      WHERE o."createdAt" BETWEEN :from AND :to
+        AND o.status != 'cancelled'
+    `, {
+      replacements: { from, to },
+      type: sequelize.QueryTypes.SELECT,
     });
 
     const avgCheck = successOrders > 0 ? (parseFloat(revenueResult.revenue) / successOrders) : 0;
@@ -74,7 +79,7 @@ router.get('/summary', async (req, res) => {
       cancelledOrders,
       paidOrders,
       revenue: parseFloat(revenueResult.revenue) || 0,
-      itemsSold: parseInt(itemsSold.total) || 0,
+      itemsSold: parseInt(itemsResult[0]?.total) || 0,
       avgCheck: Math.round(avgCheck),
       period,
       from: from.toISOString(),
@@ -107,13 +112,13 @@ router.get('/chart', async (req, res) => {
 
     const results = await sequelize.query(`
       SELECT 
-        TO_CHAR("created_at", :dateFormat) as period,
+        TO_CHAR("createdAt", :dateFormat) as period,
         COUNT(*) as orders,
         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) as revenue,
         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled
       FROM orders
-      WHERE "created_at" BETWEEN :from AND :to
-      GROUP BY TO_CHAR("created_at", :dateFormat)
+      WHERE "createdAt" BETWEEN :from AND :to
+      GROUP BY TO_CHAR("createdAt", :dateFormat)
       ORDER BY period ASC
     `, {
       replacements: { dateFormat, from, to },
@@ -151,7 +156,7 @@ router.get('/top-products', async (req, res) => {
       JOIN orders o ON o.id = oi.order_id
       JOIN products p ON p.id = oi.product_id
       LEFT JOIN categories c ON c.id = p.category_id
-      WHERE o.created_at BETWEEN :from AND :to
+      WHERE o."createdAt" BETWEEN :from AND :to
         AND o.status != 'cancelled'
       GROUP BY oi.product_id, p.name, c.name
       ORDER BY "totalRevenue" DESC
@@ -187,7 +192,7 @@ router.get('/top-sizes', async (req, res) => {
         COUNT(DISTINCT oi.order_id) as "orderCount"
       FROM order_items oi
       JOIN orders o ON o.id = oi.order_id
-      WHERE o.created_at BETWEEN :from AND :to
+      WHERE o."createdAt" BETWEEN :from AND :to
         AND o.status != 'cancelled'
         AND oi.size IS NOT NULL
       GROUP BY oi.size
@@ -221,7 +226,7 @@ router.get('/categories', async (req, res) => {
       JOIN orders o ON o.id = oi.order_id
       JOIN products p ON p.id = oi.product_id
       LEFT JOIN categories c ON c.id = p.category_id
-      WHERE o.created_at BETWEEN :from AND :to
+      WHERE o."createdAt" BETWEEN :from AND :to
         AND o.status != 'cancelled'
       GROUP BY c.name
       ORDER BY "totalRevenue" DESC
