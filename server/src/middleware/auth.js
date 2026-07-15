@@ -10,10 +10,21 @@ function authMiddleware(req, res, next) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.adminId = decoded.id;
+    req.adminRole = decoded.role || 'admin';
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Невірний токен' });
   }
 }
 
+function requireRole(...roles) {
+  return (req, res, next) => {
+    if (!roles.includes(req.adminRole)) {
+      return res.status(403).json({ error: 'Недостатньо прав' });
+    }
+    next();
+  };
+}
+
 module.exports = authMiddleware;
+module.exports.requireRole = requireRole;

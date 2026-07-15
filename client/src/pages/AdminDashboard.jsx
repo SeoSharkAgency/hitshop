@@ -1,23 +1,38 @@
 import { useState, useEffect } from 'react';
-import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2 } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 
+const ROLE_LABELS = { admin: 'адмін', accountant: 'бухгалтер', warehouse: 'склад' };
+
 export default function AdminDashboard() {
-  const [tab, setTab] = useState('products');
+  const { admin, logout } = useAuth();
+  const role = admin?.role || 'admin';
+
+  const defaultTab = role === 'accountant' ? 'orders' : 'products';
+  const [tab, setTab] = useState(defaultTab);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
-  const { logout } = useAuth();
 
-  useEffect(() => { loadProducts(); loadOrders(); loadCategories(); }, []);
+  const canProducts = role === 'admin' || role === 'warehouse';
+  const canOrders = role === 'admin' || role === 'accountant';
+  const canUsers = role === 'admin';
+
+  useEffect(() => {
+    if (canProducts) { loadProducts(); loadCategories(); }
+    if (canOrders) loadOrders();
+    if (canUsers) loadUsers();
+  }, []);
 
   const loadProducts = () => api.get('/products').then((r) => setProducts(r.data));
   const loadOrders = () => api.get('/orders').then((r) => setOrders(r.data));
   const loadCategories = () => api.get('/categories').then((r) => setCategories(r.data));
+  const loadUsers = () => api.get('/auth/users').then((r) => setUsers(r.data)).catch(() => {});
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('видалити?')) return;
@@ -63,23 +78,40 @@ export default function AdminDashboard() {
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <img src="/hit-logo.png" alt="" className="w-7 h-8 object-contain" />
-          <h1 className="font-heading font-bold text-xl text-gray-900 dark:text-white">admin</h1>
+          <div>
+            <h1 className="font-heading font-bold text-xl text-gray-900 dark:text-white">admin</h1>
+            <span className="text-xs text-gray-400 dark:text-white/40">{admin?.username} — {ROLE_LABELS[role] || role}</span>
+          </div>
         </div>
         <button onClick={logout} className="text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors text-xs flex items-center gap-1.5">
           <FiLogOut size={14} /> вийти
         </button>
       </div>
 
-      <div className="flex gap-2 mb-8">
-        <button onClick={() => setTab('products')} className={pillClass(tab === 'products')}>
-          <FiPackage size={13} /> товари ({products.length})
-        </button>
-        <button onClick={() => setTab('orders')} className={pillClass(tab === 'orders')}>
-          <FiShoppingBag size={13} /> замовлення ({orders.length})
-        </button>
+      <div className="flex gap-2 mb-8 flex-wrap">
+        {canProducts && (
+          <button onClick={() => setTab('products')} className={pillClass(tab === 'products')}>
+            <FiPackage size={13} /> товари ({products.length})
+          </button>
+        )}
+        {canOrders && (
+          <button onClick={() => setTab('orders')} className={pillClass(tab === 'orders')}>
+            <FiShoppingBag size={13} /> замовлення ({orders.length})
+          </button>
+        )}
+        {canUsers && (
+          <button onClick={() => setTab('users')} className={pillClass(tab === 'users')}>
+            <FiUsers size={13} /> користувачі ({users.length})
+          </button>
+        )}
+        {canUsers && (
+          <button onClick={() => setTab('logs')} className={pillClass(tab === 'logs')}>
+            <FiFileText size={13} /> журнал
+          </button>
+        )}
       </div>
 
-      {tab === 'products' && (
+      {tab === 'products' && canProducts && (
         <div>
           <div className="flex justify-between items-center mb-5">
             <p className="text-gray-400 dark:text-white/40 text-xs">{products.length} товарів</p>
@@ -120,9 +152,11 @@ export default function AdminDashboard() {
                   <button onClick={() => { setEditingProduct(product); setShowForm(true); }} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-hit-blue dark:hover:text-hit-yellow transition-colors">
                     <FiEdit2 size={12} />
                   </button>
-                  <button onClick={() => handleDeleteProduct(product.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors">
-                    <FiTrash2 size={12} />
-                  </button>
+                  {role === 'admin' && (
+                    <button onClick={() => handleDeleteProduct(product.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors">
+                      <FiTrash2 size={12} />
+                    </button>
+                  )}
                 </div>
               </div>
             ))}
@@ -130,7 +164,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {tab === 'orders' && (
+      {tab === 'orders' && canOrders && (
         <div>
           {orders.length === 0 ? (
             <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">замовлень немає</p>
@@ -204,6 +238,189 @@ export default function AdminDashboard() {
               ))}
             </div>
           )}
+        </div>
+      )}
+
+      {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
+      {tab === 'logs' && canUsers && <AuditLogsPanel />}
+    </div>
+  );
+}
+
+function UsersPanel({ users, onReload }) {
+  const [showAdd, setShowAdd] = useState(false);
+  const [form, setForm] = useState({ username: '', password: '', role: 'warehouse' });
+  const [loading, setLoading] = useState(false);
+  const { admin } = useAuth();
+
+  const inputClass = "w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none transition-all";
+
+  const handleAdd = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      await api.post('/auth/users', form);
+      toast.success('Користувача створено');
+      setForm({ username: '', password: '', role: 'warehouse' });
+      setShowAdd(false);
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка');
+    } finally { setLoading(false); }
+  };
+
+  const handleDelete = async (id) => {
+    if (!confirm('Видалити користувача?')) return;
+    try {
+      await api.delete(`/auth/users/${id}`);
+      toast.success('Видалено');
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <p className="text-gray-400 dark:text-white/40 text-xs">{users.length} користувачів</p>
+        <button onClick={() => setShowAdd(!showAdd)} className="btn-primary flex items-center gap-1.5 text-xs">
+          <FiPlus size={13} /> додати
+        </button>
+      </div>
+
+      {showAdd && (
+        <div className="bg-gray-50 dark:bg-white/5 border border-hit-yellow/30 rounded-2xl p-5 mb-5">
+          <p className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-4">новий користувач</p>
+          <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <input type="text" placeholder="логін" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required className={inputClass} />
+            <input type="password" placeholder="пароль" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required className={inputClass} />
+            <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={inputClass}>
+              <option value="admin">адмін</option>
+              <option value="accountant">бухгалтер</option>
+              <option value="warehouse">склад</option>
+            </select>
+            <div className="md:col-span-3 flex gap-2 mt-1">
+              <button type="submit" disabled={loading} className="btn-primary text-xs disabled:opacity-50">{loading ? '...' : 'створити'}</button>
+              <button type="button" onClick={() => setShowAdd(false)} className="btn-secondary text-xs">скасувати</button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      <div className="space-y-2">
+        {users.map((user) => (
+          <div key={user.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 flex items-center gap-3">
+            <div className="w-10 h-10 bg-gray-100 dark:bg-white/10 rounded-full flex items-center justify-center">
+              <FiUsers size={16} className="text-gray-400 dark:text-white/40" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-gray-900 dark:text-white text-sm font-medium">{user.username}</h3>
+              <p className="text-gray-400 dark:text-white/40 text-xs">
+                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                  user.role === 'admin' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
+                  user.role === 'accountant' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                  'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                }`}>
+                  {ROLE_LABELS[user.role] || user.role}
+                </span>
+              </p>
+            </div>
+            {user.id !== admin?.id && (
+              <button onClick={() => handleDelete(user.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors">
+                <FiTrash2 size={12} />
+              </button>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+const ACTION_LABELS = {
+  login: 'вхід',
+  create: 'створення',
+  update: 'оновлення',
+  delete: 'видалення',
+};
+
+const ENTITY_LABELS = {
+  auth: 'авторизація',
+  product: 'товар',
+  order: 'замовлення',
+  user: 'користувач',
+};
+
+const ACTION_COLORS = {
+  login: 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400',
+  create: 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400',
+  update: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
+  delete: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400',
+};
+
+function AuditLogsPanel() {
+  const [logs, setLogs] = useState([]);
+  const [filter, setFilter] = useState('all');
+  const [loading, setLoading] = useState(true);
+
+  const loadLogs = (entity) => {
+    setLoading(true);
+    const params = entity && entity !== 'all' ? `?entity=${entity}&limit=200` : '?limit=200';
+    api.get(`/auth/logs${params}`)
+      .then((r) => setLogs(r.data))
+      .catch(() => toast.error('Помилка завантаження'))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => { loadLogs(filter); }, [filter]);
+
+  const filterClass = (val) => `px-3 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer ${
+    filter === val
+      ? 'bg-hit-yellow text-[#0a0e1a]'
+      : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+  }`;
+
+  return (
+    <div>
+      <div className="flex flex-wrap gap-1.5 mb-5">
+        {[['all', 'всі'], ['auth', 'вхід'], ['product', 'товари'], ['order', 'замовлення'], ['user', 'користувачі']].map(([val, label]) => (
+          <button key={val} onClick={() => setFilter(val)} className={filterClass(val)}>{label}</button>
+        ))}
+      </div>
+
+      {loading ? (
+        <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">завантаження...</p>
+      ) : logs.length === 0 ? (
+        <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">записів немає</p>
+      ) : (
+        <div className="space-y-1.5">
+          {logs.map((log) => (
+            <div key={log.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 flex items-start gap-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 mb-1 flex-wrap">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${ACTION_COLORS[log.action] || 'bg-gray-100 text-gray-600 dark:bg-white/10 dark:text-white/60'}`}>
+                    {ACTION_LABELS[log.action] || log.action}
+                  </span>
+                  <span className="text-gray-400 dark:text-white/30 text-[10px]">
+                    {ENTITY_LABELS[log.entity] || log.entity}
+                  </span>
+                  <span className="text-gray-900 dark:text-white text-xs font-medium">{log.adminUsername || '—'}</span>
+                </div>
+                {log.details && (
+                  <p className="text-gray-500 dark:text-white/50 text-xs truncate">{log.details}</p>
+                )}
+              </div>
+              <div className="text-right flex-shrink-0">
+                <p className="text-gray-400 dark:text-white/30 text-[10px]">
+                  {new Date(log.createdAt).toLocaleDateString('uk-UA')}
+                </p>
+                <p className="text-gray-300 dark:text-white/20 text-[10px]">
+                  {new Date(log.createdAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
+                </p>
+              </div>
+            </div>
+          ))}
         </div>
       )}
     </div>

@@ -4,6 +4,7 @@ const Category = require('./Category');
 const Order = require('./Order');
 const OrderItem = require('./OrderItem');
 const Admin = require('./Admin');
+const AuditLog = require('./AuditLog');
 
 Category.hasMany(Product, { foreignKey: 'category_id' });
 Product.belongsTo(Category, { foreignKey: 'category_id' });
@@ -21,4 +22,5 @@ module.exports = {
   Order,
   OrderItem,
   Admin,
+  AuditLog,
 };

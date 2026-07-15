@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 
 const NP_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -106,7 +107,7 @@ router.post('/price', async (req, res) => {
   }
 });
 
-router.post('/create-ttn', auth, async (req, res) => {
+router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, res) => {
   try {
     const {
       orderId,

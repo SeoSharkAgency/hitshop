@@ -8,8 +8,10 @@ async function seed() {
     console.log('Database synced.');
 
     const hash = await bcrypt.hash('admin123', 10);
-    await Admin.create({ username: 'admin', passwordHash: hash });
-    console.log('Admin user created (admin / admin123)');
+    await Admin.create({ username: 'admin', passwordHash: hash, role: 'admin' });
+    await Admin.create({ username: 'accountant', passwordHash: hash, role: 'accountant' });
+    await Admin.create({ username: 'warehouse', passwordHash: hash, role: 'warehouse' });
+    console.log('Users created: admin/admin123 (адмін), accountant/admin123 (бухгалтер), warehouse/admin123 (склад)');
 
     const categories = await Category.bulkCreate([
       { name: 'Ігрова форма', slug: 'forma' },

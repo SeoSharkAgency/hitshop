@@ -1,5 +1,6 @@
 const { Order, OrderItem, Product, sequelize } = require('../models');
 const { notifyNewOrder, notifyStatusChange } = require('../telegram');
+const { logAction } = require('../auditLog');
 
 exports.create = async (req, res) => {
   const t = await sequelize.transaction();
@@ -158,6 +159,12 @@ exports.updateStatus = async (req, res) => {
     if (paymentStatus) order.paymentStatus = paymentStatus;
     if (ttnNumber) order.ttnNumber = String(ttnNumber).slice(0, 50);
     await order.save();
+
+    const changes = [];
+    if (status) changes.push(`статус → ${status}`);
+    if (paymentStatus) changes.push(`оплата → ${paymentStatus}`);
+    if (ttnNumber) changes.push(`ТТН → ${ttnNumber}`);
+    logAction(req, 'update', 'order', order.id, `${order.orderNumber}: ${changes.join(', ')}`);
 
     if (status) notifyStatusChange(order, 'status', status);
     if (paymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus);

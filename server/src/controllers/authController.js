@@ -1,6 +1,7 @@
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { Admin } = require('../models');
+const AuditLog = require('../models/AuditLog');
 
 exports.login = async (req, res) => {
   try {
@@ -17,12 +18,21 @@ exports.login = async (req, res) => {
     }
 
     const token = jwt.sign(
-      { id: admin.id, username: admin.username },
+      { id: admin.id, username: admin.username, role: admin.role },
       process.env.JWT_SECRET,
       { expiresIn: '24h' }
     );
 
-    res.json({ token, username: admin.username });
+    res.json({ token, username: admin.username, role: admin.role });
+
+    AuditLog.create({
+      adminId: admin.id,
+      adminUsername: admin.username,
+      action: 'login',
+      entity: 'auth',
+      details: `Вхід у систему (${admin.role})`,
+      ip: req.ip || null,
+    }).catch(() => {});
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -31,7 +41,7 @@ exports.login = async (req, res) => {
 exports.me = async (req, res) => {
   try {
     const admin = await Admin.findByPk(req.adminId, {
-      attributes: ['id', 'username'],
+      attributes: ['id', 'username', 'role'],
     });
     if (!admin) return res.status(404).json({ error: 'Адмін не знайдено' });
     res.json(admin);

@@ -1,4 +1,5 @@
 const { Product, Category } = require('../models');
+const { logAction } = require('../auditLog');
 
 exports.getAll = async (req, res) => {
   try {
@@ -67,6 +68,7 @@ exports.create = async (req, res) => {
     const full = await Product.findByPk(product.id, {
       include: [{ model: Category, attributes: ['id', 'name', 'slug'] }],
     });
+    logAction(req, 'create', 'product', product.id, `Створено товар "${name}"`);
     res.status(201).json(full);
   } catch (err) {
     res.status(500).json({ error: 'Помилка створення товару' });
@@ -106,6 +108,7 @@ exports.update = async (req, res) => {
     const full = await Product.findByPk(product.id, {
       include: [{ model: Category, attributes: ['id', 'name', 'slug'] }],
     });
+    logAction(req, 'update', 'product', product.id, `Оновлено товар "${product.name}"`);
     res.json(full);
   } catch (err) {
     res.status(500).json({ error: 'Помилка оновлення товару' });
@@ -116,7 +119,9 @@ exports.remove = async (req, res) => {
   try {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: 'Товар не знайдено' });
+    const productName = product.name;
     await product.destroy();
+    logAction(req, 'delete', 'product', parseInt(req.params.id), `Видалено товар "${productName}"`);
     res.json({ message: 'Товар видалено' });
   } catch (err) {
     res.status(500).json({ error: err.message });
