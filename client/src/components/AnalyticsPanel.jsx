@@ -76,17 +76,59 @@ export default function AnalyticsPanel() {
   useEffect(() => { loadData(); }, [loadData]);
 
   const exportCSV = () => {
-    if (!topProducts.length) return;
-    const header = 'Товар,Категорія,Продано шт,Виручка,Замовлень\n';
-    const rows = topProducts.map(p =>
-      `"${p.name}","${p.category || ''}",${p.totalQty},${p.totalRevenue},${p.orderCount}`
-    ).join('\n');
-    const blob = new Blob(['\ufeff' + header + rows], { type: 'text/csv;charset=utf-8;' });
+    const lines = ['\ufeff'];
+
+    lines.push('ЗВІТ HITSHOP');
+    lines.push(`Період:,${period === 'custom' ? `${customFrom} — ${customTo}` : PERIODS.find(p => p.value === period)?.label || period}`);
+    lines.push(`Дата звіту:,${new Date().toLocaleDateString('uk-UA')}`);
+    lines.push('');
+
+    if (summary) {
+      lines.push('ПІДСУМКИ');
+      lines.push(`Виручка:,${summary.revenue} ₴`);
+      lines.push(`Замовлень:,${summary.totalOrders}`);
+      lines.push(`Успішних:,${summary.successOrders}`);
+      lines.push(`Скасованих:,${summary.cancelledOrders}`);
+      lines.push(`Оплачених:,${summary.paidOrders}`);
+      lines.push(`Продано одиниць:,${summary.itemsSold}`);
+      lines.push(`Середній чек:,${summary.avgCheck} ₴`);
+      lines.push('');
+    }
+
+    if (topProducts.length > 0) {
+      lines.push('ТОП ТОВАРИ');
+      lines.push('Товар,Категорія,Продано шт,Виручка,Замовлень');
+      topProducts.forEach(p => {
+        lines.push(`"${p.name}","${p.category || ''}",${p.totalQty},${p.totalRevenue},${p.orderCount}`);
+      });
+      lines.push('');
+    }
+
+    if (categories.length > 0) {
+      lines.push('КАТЕГОРІЇ');
+      lines.push('Категорія,Продано шт,Виручка');
+      categories.forEach(c => {
+        lines.push(`"${c.category}",${c.totalQty},${c.totalRevenue}`);
+      });
+      lines.push('');
+    }
+
+    if (topSizes.length > 0) {
+      lines.push('РОЗМІРИ');
+      lines.push('Розмір,Продано шт,Замовлень');
+      topSizes.forEach(s => {
+        lines.push(`"${s.size}",${s.totalQty},${s.orderCount}`);
+      });
+    }
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
     a.download = `hitshop-report-${period}-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
     URL.revokeObjectURL(url);
     toast.success('Звіт завантажено');
   };
