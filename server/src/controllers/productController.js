@@ -80,6 +80,9 @@ exports.update = async (req, res) => {
     const product = await Product.findByPk(req.params.id);
     if (!product) return res.status(404).json({ error: 'Товар не знайдено' });
 
+    const oldSizes = product.sizes || {};
+    const oldStock = product.stock;
+
     const { name, description, price, categoryId, sizes, stock, featured } = req.body;
     const updateData = {};
 
@@ -105,10 +108,35 @@ exports.update = async (req, res) => {
 
     await product.update(updateData);
 
+    const newSizes = updateData.sizes || oldSizes;
+    const newStock = updateData.stock !== undefined ? updateData.stock : oldStock;
+    const stockChanges = [];
+
+    if (updateData.sizes) {
+      const allKeys = new Set([...Object.keys(oldSizes), ...Object.keys(newSizes)]);
+      for (const size of allKeys) {
+        const oldQty = oldSizes[size] ?? 0;
+        const newQty = newSizes[size] ?? 0;
+        if (oldQty !== newQty) {
+          const diff = newQty - oldQty;
+          stockChanges.push(`${size}: ${oldQty} → ${newQty} (${diff > 0 ? '+' : ''}${diff})`);
+        }
+      }
+    } else if (updateData.stock !== undefined && updateData.stock !== oldStock) {
+      const diff = newStock - oldStock;
+      stockChanges.push(`загалом: ${oldStock} → ${newStock} (${diff > 0 ? '+' : ''}${diff})`);
+    }
+
+    if (stockChanges.length > 0) {
+      logAction(req, 'stock_change', 'product', product.id,
+        `"${product.name}" — залишки: ${stockChanges.join(', ')}`);
+    }
+
+    logAction(req, 'update', 'product', product.id, `Оновлено товар "${product.name}"`);
+
     const full = await Product.findByPk(product.id, {
       include: [{ model: Category, attributes: ['id', 'name', 'slug'] }],
     });
-    logAction(req, 'update', 'product', product.id, `Оновлено товар "${product.name}"`);
     res.json(full);
   } catch (err) {
     res.status(500).json({ error: 'Помилка оновлення товару' });

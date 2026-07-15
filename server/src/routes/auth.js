@@ -46,9 +46,10 @@ router.delete('/users/:id', authMiddleware, requireRole('admin'), async (req, re
 
 router.get('/logs', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
-    const { entity, limit } = req.query;
+    const { entity, action, limit } = req.query;
     const where = {};
     if (entity) where.entity = entity;
+    if (action) where.action = action;
     const logs = await AuditLog.findAll({
       where,
       order: [['createdAt', 'DESC']],

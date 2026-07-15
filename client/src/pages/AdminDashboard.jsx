@@ -351,6 +351,7 @@ const ACTION_LABELS = {
   create: 'створення',
   update: 'оновлення',
   delete: 'видалення',
+  stock_change: 'склад',
 };
 
 const ENTITY_LABELS = {
@@ -365,23 +366,34 @@ const ACTION_COLORS = {
   create: 'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400',
   update: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400',
   delete: 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400',
+  stock_change: 'bg-purple-100 text-purple-600 dark:bg-purple-500/20 dark:text-purple-400',
 };
 
 function AuditLogsPanel() {
   const [logs, setLogs] = useState([]);
   const [filter, setFilter] = useState('all');
+  const [actionFilter, setActionFilter] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const loadLogs = (entity) => {
+  const loadLogs = (entity, action) => {
     setLoading(true);
-    const params = entity && entity !== 'all' ? `?entity=${entity}&limit=200` : '?limit=200';
+    let params = '?limit=200';
+    if (entity && entity !== 'all') params += `&entity=${entity}`;
+    if (action) params += `&action=${action}`;
     api.get(`/auth/logs${params}`)
       .then((r) => setLogs(r.data))
       .catch(() => toast.error('Помилка завантаження'))
       .finally(() => setLoading(false));
   };
 
-  useEffect(() => { loadLogs(filter); }, [filter]);
+  useEffect(() => {
+    if (actionFilter) {
+      setFilter('all');
+      loadLogs('all', actionFilter);
+    } else {
+      loadLogs(filter, '');
+    }
+  }, [filter, actionFilter]);
 
   const filterClass = (val) => `px-3 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer ${
     filter === val
@@ -393,8 +405,11 @@ function AuditLogsPanel() {
     <div>
       <div className="flex flex-wrap gap-1.5 mb-5">
         {[['all', 'всі'], ['auth', 'вхід'], ['product', 'товари'], ['order', 'замовлення'], ['user', 'користувачі']].map(([val, label]) => (
-          <button key={val} onClick={() => setFilter(val)} className={filterClass(val)}>{label}</button>
+          <button key={val} onClick={() => { setActionFilter(''); setFilter(val); }} className={filterClass(!actionFilter && filter === val ? val : '')}>{label}</button>
         ))}
+        <button onClick={() => setActionFilter(actionFilter === 'stock_change' ? '' : 'stock_change')} className={filterClass(actionFilter === 'stock_change' ? 'stock_change' : '')}>
+          склад
+        </button>
       </div>
 
       {loading ? (
