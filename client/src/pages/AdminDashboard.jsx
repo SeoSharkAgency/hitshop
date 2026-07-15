@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
-import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2 } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
+import AnalyticsPanel from '../components/AnalyticsPanel';
 
 const ROLE_LABELS = { admin: 'адмін', accountant: 'бухгалтер', warehouse: 'склад' };
 
@@ -22,6 +23,7 @@ export default function AdminDashboard() {
   const canProducts = role === 'admin' || role === 'warehouse';
   const canOrders = role === 'admin' || role === 'accountant';
   const canUsers = role === 'admin';
+  const canAnalytics = role === 'admin' || role === 'accountant';
 
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
@@ -97,6 +99,11 @@ export default function AdminDashboard() {
         {canOrders && (
           <button onClick={() => setTab('orders')} className={pillClass(tab === 'orders')}>
             <FiShoppingBag size={13} /> замовлення ({orders.length})
+          </button>
+        )}
+        {canAnalytics && (
+          <button onClick={() => setTab('analytics')} className={pillClass(tab === 'analytics')}>
+            <FiBarChart2 size={13} /> аналітика
           </button>
         )}
         {canUsers && (
@@ -243,6 +250,7 @@ export default function AdminDashboard() {
 
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
+      {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
     </div>
   );
 }
