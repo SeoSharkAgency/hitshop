@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { FiCheckCircle, FiClock, FiTruck, FiPackage, FiXCircle } from 'react-icons/fi';
+import { FiCheckCircle, FiClock, FiTruck, FiPackage, FiXCircle, FiCopy } from 'react-icons/fi';
+import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 
 const STATUS_MAP = {
@@ -68,26 +69,11 @@ export default function OrderStatus() {
         <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl p-5 mb-5">
           <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-3">Реквізити для оплати</h3>
           <div className="space-y-2 text-sm">
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-white/50">Одержувач:</span>
-              <span className="text-gray-900 dark:text-white font-medium">{import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-white/50">IBAN:</span>
-              <span className="text-gray-900 dark:text-white font-mono text-xs">{import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-white/50">ЄДРПОУ:</span>
-              <span className="text-gray-900 dark:text-white font-medium">{import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'}</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-gray-500 dark:text-white/50">Призначення:</span>
-              <span className="text-gray-900 dark:text-white font-medium">Оплата за замовлення {order.orderNumber}</span>
-            </div>
-            <div className="flex justify-between items-center pt-2 border-t border-yellow-200 dark:border-yellow-500/20 mt-2">
-              <span className="text-gray-500 dark:text-white/50">Сума:</span>
-              <span className="font-heading font-bold text-lg text-hit-blue dark:text-hit-yellow">{Number(order.total).toLocaleString('uk-UA')} ₴</span>
-            </div>
+            <CopyRow label="Одержувач" value={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'} />
+            <CopyRow label="IBAN" value={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'} mono />
+            <CopyRow label="ЄДРПОУ" value={import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'} />
+            <CopyRow label="Призначення" value={`Оплата за замовлення ${order.orderNumber}`} />
+            <CopyRow label="Сума" value={`${Number(order.total).toLocaleString('uk-UA')} ₴`} bold />
           </div>
         </div>
       )}
@@ -172,6 +158,32 @@ export default function OrderStatus() {
       <div className="flex flex-wrap gap-3 justify-center mt-8">
         <Link to="/catalog" className="btn-primary">Ще мерч</Link>
         <Link to="/" className="btn-secondary">На головну</Link>
+      </div>
+    </div>
+  );
+}
+
+function CopyRow({ label, value, mono, bold }) {
+  const copy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      toast.success('Скопійовано');
+    }).catch(() => {});
+  };
+
+  return (
+    <div className="flex items-center justify-between gap-2 py-1">
+      <span className="text-gray-500 dark:text-white/50 flex-shrink-0">{label}:</span>
+      <div className="flex items-center gap-1.5 min-w-0">
+        <span className={`truncate ${mono ? 'font-mono text-xs' : ''} ${bold ? 'font-heading font-bold text-lg text-hit-blue dark:text-hit-yellow' : 'text-gray-900 dark:text-white font-medium'}`}>
+          {value}
+        </span>
+        <button
+          onClick={copy}
+          className="flex-shrink-0 w-6 h-6 rounded-md bg-yellow-200/50 dark:bg-yellow-500/10 flex items-center justify-center text-yellow-700 dark:text-yellow-400 hover:bg-yellow-300/50 dark:hover:bg-yellow-500/20 transition-colors"
+          title="Копіювати"
+        >
+          <FiCopy size={12} />
+        </button>
       </div>
     </div>
   );
