@@ -35,7 +35,6 @@ app.use('/api/products', require('./routes/products'));
 app.use('/api/categories', require('./routes/categories'));
 app.use('/api/orders', orderLimiter, require('./routes/orders'));
 app.use('/api/auth', authLimiter, require('./routes/auth'));
-app.use('/api/payments', require('./routes/payments'));
 app.use('/api/novaposhta', require('./routes/novaposhta'));
 app.use('/api/analytics', require('./routes/analytics'));
 

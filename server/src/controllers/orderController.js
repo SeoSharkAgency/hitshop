@@ -1,6 +1,7 @@
 const { Order, OrderItem, Product, sequelize } = require('../models');
 const { notifyNewOrder, notifyStatusChange } = require('../telegram');
 const { logAction } = require('../auditLog');
+const { sendOrderConfirmation } = require('../mailer');
 
 exports.create = async (req, res) => {
   const t = await sequelize.transaction();
@@ -106,12 +107,27 @@ exports.create = async (req, res) => {
     });
 
     notifyNewOrder(fullOrder);
+    sendOrderConfirmation(fullOrder, fullOrder.items || []);
 
     res.status(201).json(fullOrder);
   } catch (err) {
     await t.rollback();
     console.error('Order create error:', err.message);
     res.status(500).json({ error: 'Помилка створення замовлення' });
+  }
+};
+
+exports.getByOrderNumber = async (req, res) => {
+  try {
+    const order = await Order.findOne({
+      where: { orderNumber: req.params.orderNumber },
+      include: [{ model: OrderItem, as: 'items', include: [{ model: Product, attributes: ['id', 'name', 'image'] }] }],
+      attributes: ['id', 'orderNumber', 'customerName', 'total', 'status', 'paymentStatus', 'deliveryAddress', 'ttnNumber', 'deliveryCost', 'createdAt'],
+    });
+    if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
+    res.json(order);
+  } catch (err) {
+    res.status(500).json({ error: 'Помилка' });
   }
 };
 

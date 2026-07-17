@@ -134,33 +134,7 @@ export default function Checkout() {
       };
       const res = await api.post('/orders', orderData);
       clearCart();
-
-      if (import.meta.env.DEV) {
-        navigate(`/order-success/${res.data.id}`);
-        return;
-      }
-
-      const paymentRes = await api.post('/payments/create', { orderId: res.data.id });
-
-      const wayforpayForm = document.createElement('form');
-      wayforpayForm.method = 'POST';
-      wayforpayForm.action = 'https://secure.wayforpay.com/pay';
-      wayforpayForm.style.display = 'none';
-      Object.entries(paymentRes.data).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach((v) => {
-            const input = document.createElement('input');
-            input.type = 'hidden'; input.name = `${key}[]`; input.value = v;
-            wayforpayForm.appendChild(input);
-          });
-        } else {
-          const input = document.createElement('input');
-          input.type = 'hidden'; input.name = key; input.value = value;
-          wayforpayForm.appendChild(input);
-        }
-      });
-      document.body.appendChild(wayforpayForm);
-      wayforpayForm.submit();
+      navigate(`/order/${res.data.orderNumber}`);
     } catch (err) {
       toast.error(err.response?.data?.error || 'щось не так 😕');
       setLoading(false);
@@ -287,7 +261,7 @@ export default function Checkout() {
         </div>
 
         <button type="submit" disabled={loading} className="btn-primary w-full disabled:opacity-50 disabled:cursor-not-allowed">
-          {loading ? 'зачекай...' : 'оплатити'}
+          {loading ? 'зачекай...' : 'замовити'}
         </button>
       </form>
     </div>

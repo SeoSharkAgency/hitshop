@@ -9,6 +9,7 @@ import ProductPage from './pages/ProductPage';
 import Cart from './pages/Cart';
 import Checkout from './pages/Checkout';
 import OrderSuccess from './pages/OrderSuccess';
+import OrderStatus from './pages/OrderStatus';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
 
@@ -43,6 +44,7 @@ export default function App() {
           <Route path="/product/:id" element={<ProductPage />} />
           <Route path="/cart" element={<Cart />} />
           <Route path="/checkout" element={<Checkout />} />
+          <Route path="/order/:orderNumber" element={<OrderStatus />} />
           <Route path="/order-success/:id" element={<OrderSuccess />} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
