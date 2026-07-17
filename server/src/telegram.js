@@ -39,7 +39,7 @@ function notifyNewOrder(order) {
   sendMessage(text);
 }
 
-function notifyStatusChange(order, field, newValue) {
+function notifyStatusChange(order, field, newValue, changedBy) {
   const statusLabels = {
     new: 'нове',
     processing: 'в обробці',
@@ -70,7 +70,8 @@ function notifyStatusChange(order, field, newValue) {
 
   const text = `${emoji} <b>Статус змінено</b>\n\n` +
     `<b>${order.orderNumber}</b> — ${order.customerName}\n` +
-    `${field === 'status' ? 'Статус' : 'Оплата'}: <b>${label}</b>`;
+    `${field === 'status' ? 'Статус' : 'Оплата'}: <b>${label}</b>\n` +
+    `👤 Змінив: <b>${changedBy || 'система'}</b>`;
 
   sendMessage(text);
 }

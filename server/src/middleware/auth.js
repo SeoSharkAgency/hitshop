@@ -11,6 +11,7 @@ function authMiddleware(req, res, next) {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     req.adminId = decoded.id;
     req.adminRole = decoded.role || 'admin';
+    req.adminUsername = decoded.username || null;
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Невірний токен' });

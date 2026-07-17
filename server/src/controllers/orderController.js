@@ -182,8 +182,8 @@ exports.updateStatus = async (req, res) => {
     if (ttnNumber) changes.push(`ТТН → ${ttnNumber}`);
     logAction(req, 'update', 'order', order.id, `${order.orderNumber}: ${changes.join(', ')}`);
 
-    if (status) notifyStatusChange(order, 'status', status);
-    if (paymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus);
+    if (status) notifyStatusChange(order, 'status', status, req.adminUsername);
+    if (paymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus, req.adminUsername);
 
     const fullOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],
