@@ -259,6 +259,9 @@ function UsersPanel({ users, onReload }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', role: 'warehouse' });
   const [loading, setLoading] = useState(false);
+  const [editingId, setEditingId] = useState(null);
+  const [editRole, setEditRole] = useState('');
+  const [newPassword, setNewPassword] = useState('');
   const { admin } = useAuth();
 
   const inputClass = "w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none transition-all";
@@ -283,6 +286,32 @@ function UsersPanel({ users, onReload }) {
       await api.delete(`/auth/users/${id}`);
       toast.success('Видалено');
       onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка');
+    }
+  };
+
+  const handleRoleChange = async (id, role) => {
+    try {
+      await api.put(`/auth/users/${id}`, { role });
+      toast.success('Роль змінено');
+      setEditingId(null);
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка');
+    }
+  };
+
+  const handlePasswordReset = async (id) => {
+    if (!newPassword || newPassword.length < 4) {
+      toast.error('Мінімум 4 символи');
+      return;
+    }
+    try {
+      await api.put(`/auth/users/${id}`, { password: newPassword });
+      toast.success('Пароль змінено');
+      setNewPassword('');
+      setEditingId(null);
     } catch (err) {
       toast.error(err.response?.data?.error || 'Помилка');
     }
@@ -318,26 +347,77 @@ function UsersPanel({ users, onReload }) {
 
       <div className="space-y-2">
         {users.map((user) => (
-          <div key={user.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 flex items-center gap-3">
-            <div className="w-10 h-10 bg-gray-100 dark:bg-white/10 rounded-full flex items-center justify-center">
-              <FiUsers size={16} className="text-gray-400 dark:text-white/40" />
+          <div key={user.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 bg-gray-100 dark:bg-white/10 rounded-full flex items-center justify-center">
+                <FiUsers size={16} className="text-gray-400 dark:text-white/40" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-gray-900 dark:text-white text-sm font-medium">{user.username}</h3>
+                <p className="text-gray-400 dark:text-white/40 text-xs">
+                  <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
+                    user.role === 'admin' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
+                    user.role === 'accountant' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
+                    'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
+                  }`}>
+                    {ROLE_LABELS[user.role] || user.role}
+                  </span>
+                </p>
+              </div>
+              <div className="flex gap-1">
+                {user.id !== admin?.id && (
+                  <>
+                    <button onClick={() => { setEditingId(editingId === user.id ? null : user.id); setEditRole(user.role); setNewPassword(''); }}
+                      className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-hit-blue dark:hover:text-hit-yellow transition-colors">
+                      <FiEdit2 size={12} />
+                    </button>
+                    <button onClick={() => handleDelete(user.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors">
+                      <FiTrash2 size={12} />
+                    </button>
+                  </>
+                )}
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-gray-900 dark:text-white text-sm font-medium">{user.username}</h3>
-              <p className="text-gray-400 dark:text-white/40 text-xs">
-                <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-medium ${
-                  user.role === 'admin' ? 'bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400' :
-                  user.role === 'accountant' ? 'bg-blue-100 text-blue-600 dark:bg-blue-500/20 dark:text-blue-400' :
-                  'bg-green-100 text-green-600 dark:bg-green-500/20 dark:text-green-400'
-                }`}>
-                  {ROLE_LABELS[user.role] || user.role}
-                </span>
-              </p>
-            </div>
-            {user.id !== admin?.id && (
-              <button onClick={() => handleDelete(user.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors">
-                <FiTrash2 size={12} />
-              </button>
+
+            {editingId === user.id && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10 space-y-3">
+                <div>
+                  <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-1.5">роль</p>
+                  <div className="flex gap-1.5">
+                    {[['admin', 'адмін'], ['accountant', 'бухгалтер'], ['warehouse', 'склад']].map(([val, label]) => (
+                      <button
+                        key={val}
+                        onClick={() => handleRoleChange(user.id, val)}
+                        className={`px-3 py-1.5 rounded-lg text-[11px] font-medium transition-all ${
+                          user.role === val
+                            ? 'bg-hit-yellow text-[#0a0e1a]'
+                            : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border border-gray-200 dark:border-white/10 hover:border-hit-blue dark:hover:border-hit-yellow/50'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-1.5">змінити пароль</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="password"
+                      placeholder="новий пароль"
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handlePasswordReset(user.id)}
+                      className="px-3 py-1.5 rounded-lg text-[11px] font-medium bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border border-gray-200 dark:border-white/10 hover:border-hit-blue dark:hover:border-hit-yellow/50 transition-all"
+                    >
+                      зберегти
+                    </button>
+                  </div>
+                </div>
+              </div>
             )}
           </div>
         ))}

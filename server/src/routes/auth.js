@@ -44,6 +44,27 @@ router.delete('/users/:id', authMiddleware, requireRole('admin'), async (req, re
   } catch { res.status(500).json({ error: 'Помилка' }); }
 });
 
+router.put('/users/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const user = await Admin.findByPk(req.params.id);
+    if (!user) return res.status(404).json({ error: 'Не знайдено' });
+    const { role, password } = req.body;
+    const validRoles = ['admin', 'accountant', 'warehouse'];
+    if (role) {
+      if (!validRoles.includes(role)) return res.status(400).json({ error: 'Невірна роль' });
+      const oldRole = user.role;
+      user.role = role;
+      logAction(req, 'update', 'user', user.id, `Змінено роль "${user.username}": ${oldRole} → ${role}`);
+    }
+    if (password) {
+      user.passwordHash = await bcrypt.hash(password, 10);
+      logAction(req, 'update', 'user', user.id, `Змінено пароль "${user.username}"`);
+    }
+    await user.save();
+    res.json({ id: user.id, username: user.username, role: user.role });
+  } catch { res.status(500).json({ error: 'Помилка' }); }
+});
+
 router.get('/logs', authMiddleware, requireRole('admin'), async (req, res) => {
   try {
     const { entity, action, limit } = req.query;
