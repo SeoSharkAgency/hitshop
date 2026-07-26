@@ -6,39 +6,39 @@ export default function ProductCard({ product }) {
   const sizeKeys = Array.isArray(rawSizes) ? rawSizes : Object.keys(rawSizes || {});
 
   return (
-    <Link to={`/product/${product.id}`} className="card group">
-      <div className="aspect-[4/5] relative overflow-hidden flex items-center justify-center bg-gray-100 dark:bg-white/5">
+    <Link to={`/product/${product.id}`} className="group block bg-white dark:bg-hit-blue/40 rounded-2xl overflow-hidden shadow-[0_18px_44px_rgba(8,29,69,.08)] dark:shadow-[0_18px_44px_rgba(8,29,69,.4)] hover:shadow-[0_24px_56px_rgba(8,29,69,.14)] dark:hover:shadow-[0_24px_56px_rgba(8,29,69,.5)] transition-all duration-300">
+      <div className="aspect-square relative overflow-hidden bg-gray-50 dark:bg-hit-navy/50 flex items-center justify-center">
         {product.image ? (
           <img
             src={getImageUrl(product.image)}
             alt={product.name}
-            className="w-full h-full object-contain p-4 group-hover:scale-110 transition-transform duration-500"
+            className="w-full h-full object-contain p-6 group-hover:scale-105 transition-transform duration-500"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center p-10">
-            <img src="/hit-logo.png" alt="ФК Хіт" className="w-20 h-24 object-contain opacity-20 group-hover:opacity-40 group-hover:scale-110 transition-all duration-500" />
+            <img src="/hit-logo.png" alt="ФК ХІТ" className="w-20 h-20 object-contain opacity-15 group-hover:opacity-30 group-hover:scale-105 transition-all duration-500" />
           </div>
         )}
         {product.featured && (
-          <span className="absolute top-3 right-3 bg-hit-yellow text-[#0a0e1a] text-[10px] font-bold px-2.5 py-1 rounded-full uppercase tracking-wider">
+          <span className="absolute top-3 right-3 bg-hit-gold text-hit-blue text-[10px] font-heading font-bold px-3 py-1 rounded-full uppercase tracking-wider">
             top
           </span>
         )}
       </div>
-      <div className="p-4">
-        <h3 className="font-medium text-gray-900 dark:text-white text-sm group-hover:text-hit-blue dark:group-hover:text-hit-yellow transition-colors line-clamp-2 leading-snug">
+      <div className="p-4 space-y-1.5">
+        <h3 className="font-body font-medium text-hit-ink dark:text-hit-cream text-sm leading-snug line-clamp-2 group-hover:text-hit-blue-700 dark:group-hover:text-hit-gold transition-colors">
           {product.name}
         </h3>
         {product.Category && (
-          <p className="text-gray-400 dark:text-white/40 text-xs mt-1.5">{product.Category.name}</p>
+          <p className="text-hit-muted dark:text-hit-cream/40 text-xs">{product.Category.name}</p>
         )}
-        <div className="flex items-center justify-between mt-3">
-          <span className="text-hit-blue dark:text-hit-yellow font-heading font-bold text-base">
-            {Number(product.price).toLocaleString()} ₴
+        <div className="flex items-center justify-between pt-1">
+          <span className="font-heading font-bold text-base text-hit-ink dark:text-hit-gold">
+            {Number(product.price).toLocaleString('uk-UA')} ₴
           </span>
           {sizeKeys && sizeKeys.length > 0 && (
-            <span className="text-gray-300 dark:text-white/30 text-[10px] uppercase tracking-wider">
-              {sizeKeys.join(', ')}
+            <span className="text-hit-muted dark:text-hit-cream/30 text-[10px] uppercase tracking-wider font-medium">
+              {sizeKeys.join(' · ')}
             </span>
           )}
         </div>

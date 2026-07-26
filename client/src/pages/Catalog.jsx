@@ -24,10 +24,10 @@ export default function Catalog() {
   }, [activeCategory]);
 
   return (
-    <div className="pt-24 max-w-6xl mx-auto px-4 pb-16">
+    <div className="pt-24 max-w-[1320px] mx-auto px-5 pb-16">
       <div className="mb-8">
-        <h1 className="font-heading font-bold text-2xl text-gray-900 dark:text-white">Каталог</h1>
-        <p className="text-gray-400 dark:text-white/40 text-sm mt-1">обирай свій стиль</p>
+        <p className="font-heading font-semibold text-[10px] uppercase tracking-[.2em] text-hit-gold mb-1">Офіційний магазин</p>
+        <h1 className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-cream">Каталог</h1>
       </div>
 
       {/* Filter pills */}
@@ -36,8 +36,8 @@ export default function Catalog() {
           onClick={() => setSearchParams({})}
           className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
             !activeCategory
-              ? 'bg-hit-yellow text-[#0a0e1a] shadow-[0_0_12px_rgba(255,229,0,0.25)]'
-              : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30'
+              ? 'bg-hit-gold text-hit-blue font-bold shadow-[0_4px_12px_rgba(230,184,76,0.3)]'
+              : 'bg-gray-50 dark:bg-white/5 text-hit-muted dark:text-hit-cream/50 border border-gray-100 dark:border-white/10 hover:border-hit-gold/40 dark:hover:border-hit-gold/30'
           }`}
         >
           все
@@ -48,8 +48,8 @@ export default function Catalog() {
             onClick={() => setSearchParams({ category: cat.slug })}
             className={`px-4 py-2 rounded-full text-xs font-medium transition-all duration-300 ${
               activeCategory === cat.slug
-                ? 'bg-hit-yellow text-[#0a0e1a] shadow-[0_0_12px_rgba(255,229,0,0.25)]'
-                : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30'
+                ? 'bg-hit-gold text-hit-blue font-bold shadow-[0_4px_12px_rgba(230,184,76,0.3)]'
+                : 'bg-gray-50 dark:bg-white/5 text-hit-muted dark:text-hit-cream/50 border border-gray-100 dark:border-white/10 hover:border-hit-gold/40 dark:hover:border-hit-gold/30'
             }`}
           >
             {cat.name.toLowerCase()}
@@ -60,8 +60,8 @@ export default function Catalog() {
       {loading ? (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">
           {[...Array(8)].map((_, i) => (
-            <div key={i} className="card animate-pulse">
-              <div className="aspect-[4/5] bg-gray-100 dark:bg-white/5"></div>
+            <div key={i} className="bg-white dark:bg-hit-blue/40 rounded-2xl animate-pulse overflow-hidden border border-gray-100 dark:border-white/5">
+              <div className="aspect-square bg-gray-50 dark:bg-hit-navy/50"></div>
               <div className="p-4 space-y-2">
                 <div className="h-3 bg-gray-100 dark:bg-white/5 rounded-full w-3/4"></div>
                 <div className="h-3 bg-gray-100 dark:bg-white/5 rounded-full w-1/2"></div>
@@ -71,8 +71,8 @@ export default function Catalog() {
         </div>
       ) : products.length === 0 ? (
         <div className="text-center py-20">
-          <img src="/hit-logo.png" alt="" className="w-14 h-16 object-contain mx-auto mb-4 opacity-15" />
-          <p className="text-gray-400 dark:text-white/40 text-sm">тут поки нічого</p>
+          <img src="/hit-logo.png" alt="" className="w-14 h-14 object-contain mx-auto mb-4 opacity-15" />
+          <p className="text-hit-muted dark:text-hit-cream/40 text-sm">Тут поки нічого</p>
         </div>
       ) : (
         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 md:gap-5">

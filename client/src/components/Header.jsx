@@ -10,66 +10,76 @@ export default function Header() {
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50">
-      <div className="max-w-6xl mx-auto px-4 pt-3">
-        <div className="glass rounded-2xl px-5 py-3 flex items-center justify-between shadow-sm">
-          <Link to="/" className="flex items-center gap-2.5">
-            <img src="/hit-logo.png" alt="ФК Хіт" className="w-8 h-10 object-contain" />
-            <span className="font-heading font-bold text-base text-gray-900 dark:text-white">
-              hit<span className="text-hit-blue dark:text-hit-yellow">shop</span>
-            </span>
+    <header className="fixed top-0 left-0 right-0 z-50 bg-hit-blue/95 backdrop-blur-md border-b border-white/5">
+      <div className="max-w-[1320px] mx-auto px-5 h-16 flex items-center justify-between">
+        <Link to="/" className="flex items-center gap-2.5">
+          <img src="/hit-logo.png" alt="ФК ХІТ" className="w-9 h-9 object-contain" />
+          <span className="font-heading font-bold text-sm text-hit-cream tracking-wide">
+            ФК «ХІТ»
+          </span>
+        </Link>
+
+        <nav className="hidden md:flex items-center gap-6">
+          <Link to="/" className="text-hit-cream/60 hover:text-hit-cream transition-colors text-sm font-medium">
+            Головна
           </Link>
+          <Link to="/catalog" className="text-hit-cream/60 hover:text-hit-cream transition-colors text-sm font-medium">
+            Каталог
+          </Link>
+          <Link to="/cart" className="relative text-hit-cream/60 hover:text-hit-cream transition-colors text-sm font-medium flex items-center gap-1.5">
+            <FiShoppingCart size={15} />
+            Кошик
+            {totalItems > 0 && (
+              <span className="absolute -top-1.5 -left-1.5 bg-hit-gold text-hit-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={toggle}
+            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/60 hover:text-hit-gold transition-colors"
+          >
+            {dark ? <FiSun size={15} /> : <FiMoon size={15} />}
+          </button>
+          <Link
+            to="/catalog"
+            className="bg-hit-gold hover:bg-hit-gold-hi text-hit-blue font-heading font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-full transition-colors"
+          >
+            Shop
+          </Link>
+        </nav>
 
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="text-gray-500 hover:text-gray-900 dark:text-white/60 dark:hover:text-white transition-colors text-sm">
-              home
-            </Link>
-            <Link to="/catalog" className="text-gray-500 hover:text-gray-900 dark:text-white/60 dark:hover:text-white transition-colors text-sm">
-              каталог
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={toggle}
-              className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-white/60 hover:text-hit-blue dark:hover:text-hit-yellow transition-all"
-            >
-              {dark ? <FiSun size={15} /> : <FiMoon size={15} />}
-            </button>
-            <Link
-              to="/cart"
-              className="relative w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-white/60 hover:text-hit-blue dark:hover:text-hit-yellow transition-all"
-            >
-              <FiShoppingCart size={15} />
-              {totalItems > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 bg-hit-yellow text-[#0a0e1a] text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                  {totalItems}
-                </span>
-              )}
-            </Link>
-            <Link
-              to="/admin"
-              className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-white/60 hover:text-hit-blue dark:hover:text-hit-yellow transition-all hidden md:flex"
-            >
-              <FiUser size={15} />
-            </Link>
-            <button
-              onClick={() => setMenuOpen(!menuOpen)}
-              className="w-9 h-9 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500 dark:text-white/60 transition-all md:hidden"
-            >
-              {menuOpen ? <FiX size={15} /> : <FiMenu size={15} />}
-            </button>
-          </div>
+        <div className="flex items-center gap-2 md:hidden">
+          <button
+            onClick={toggle}
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/70"
+          >
+            {dark ? <FiSun size={16} /> : <FiMoon size={16} />}
+          </button>
+          <Link to="/cart" className="relative w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/70">
+            <FiShoppingCart size={16} />
+            {totalItems > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 bg-hit-gold text-hit-blue text-[10px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {totalItems}
+              </span>
+            )}
+          </Link>
+          <button
+            onClick={() => setMenuOpen(!menuOpen)}
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/70"
+          >
+            {menuOpen ? <FiX size={16} /> : <FiMenu size={16} />}
+          </button>
         </div>
-
-        {menuOpen && (
-          <div className="md:hidden mt-2 glass rounded-2xl px-5 py-4 space-y-2 shadow-sm">
-            <Link to="/" onClick={() => setMenuOpen(false)} className="block text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white text-sm py-1.5">home</Link>
-            <Link to="/catalog" onClick={() => setMenuOpen(false)} className="block text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white text-sm py-1.5">каталог</Link>
-            <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-gray-600 dark:text-white/60 hover:text-gray-900 dark:hover:text-white text-sm py-1.5">адмін</Link>
-          </div>
-        )}
       </div>
+
+      {menuOpen && (
+        <div className="md:hidden bg-hit-blue border-t border-white/5 px-5 py-4 space-y-1">
+          <Link to="/" onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">Головна</Link>
+          <Link to="/catalog" onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">Каталог</Link>
+          <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">Адмін</Link>
+        </div>
+      )}
     </header>
   );
 }
