@@ -42,6 +42,17 @@ const Product = sequelize.define('Product', {
     type: DataTypes.BOOLEAN,
     defaultValue: false,
   },
+  sizeChart: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+    field: 'size_chart',
+  },
+  characteristics: {
+    type: DataTypes.JSON,
+    allowNull: true,
+    defaultValue: null,
+  },
 }, {
   tableName: 'products',
   timestamps: true,

@@ -10,6 +10,7 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('');
+  const [activeTab, setActiveTab] = useState('description');
   const { addItem } = useCart();
 
   useEffect(() => {
@@ -27,9 +28,9 @@ export default function ProductPage() {
 
   if (loading) {
     return (
-      <div className="pt-24 max-w-6xl mx-auto px-4">
+      <div className="pt-24 max-w-[1320px] mx-auto px-5">
         <div className="animate-pulse grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="aspect-[4/5] bg-gray-100 dark:bg-white/5 rounded-2xl"></div>
+          <div className="aspect-square bg-gray-50 dark:bg-hit-navy/50 rounded-2xl"></div>
           <div className="space-y-4 py-8">
             <div className="h-5 bg-gray-100 dark:bg-white/5 rounded-full w-3/4"></div>
             <div className="h-4 bg-gray-100 dark:bg-white/5 rounded-full w-1/2"></div>
@@ -41,9 +42,9 @@ export default function ProductPage() {
 
   if (!product) {
     return (
-      <div className="pt-24 max-w-6xl mx-auto px-4 py-20 text-center">
-        <p className="text-gray-400 dark:text-white/40">не знайшли 🤷</p>
-        <Link to="/catalog" className="btn-primary mt-4 inline-block">каталог</Link>
+      <div className="pt-24 max-w-[1320px] mx-auto px-5 py-20 text-center">
+        <p className="text-hit-muted dark:text-hit-cream/40">Товар не знайдено</p>
+        <Link to="/catalog" className="btn-primary mt-4 inline-block">Каталог</Link>
       </div>
     );
   }
@@ -55,57 +56,62 @@ export default function ProductPage() {
   const sizeKeys = Object.keys(sizesObj);
   const hasSizes = sizeKeys.length > 0;
 
+  const characteristics = product.characteristics || null;
+  const sizeChart = product.sizeChart || null;
+
   const handleAddToCart = () => {
     if (hasSizes && !selectedSize) {
-      toast.error('обери розмір');
+      toast.error('Оберіть розмір');
       return;
     }
     if (hasSizes && sizesObj[selectedSize] !== null && sizesObj[selectedSize] <= 0) {
-      toast.error('цього розміру немає в наявності');
+      toast.error('Цього розміру немає в наявності');
       return;
     }
     addItem(
       { id: product.id, name: product.name, price: Number(product.price), image: product.image },
       selectedSize
     );
-    toast.success('додано ✓');
+    toast.success('Додано в кошик');
   };
 
+  const tabs = [
+    { id: 'description', label: 'Опис' },
+    { id: 'characteristics', label: 'Характеристики' },
+    ...(sizeChart ? [{ id: 'sizeChart', label: 'Розмірна сітка' }] : []),
+  ];
+
   return (
-    <div className="pt-24 max-w-6xl mx-auto px-4 pb-16">
-      <Link to="/catalog" className="inline-flex items-center gap-1.5 text-gray-400 dark:text-white/40 hover:text-hit-blue dark:hover:text-hit-yellow mb-6 transition-colors text-xs">
-        <FiArrowLeft size={14} /> назад
+    <div className="pt-24 max-w-[1320px] mx-auto px-5 pb-16">
+      <Link to="/catalog" className="inline-flex items-center gap-1.5 text-hit-muted dark:text-hit-cream/40 hover:text-hit-blue-700 dark:hover:text-hit-gold mb-6 transition-colors text-xs font-medium">
+        <FiArrowLeft size={14} /> Назад до каталогу
       </Link>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 lg:gap-12">
-        <div className="aspect-[4/5] bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden flex items-center justify-center">
+        <div className="aspect-square bg-gray-50 dark:bg-hit-navy/50 border border-gray-100 dark:border-white/5 rounded-2xl overflow-hidden flex items-center justify-center">
           {product.image ? (
-            <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-contain p-4" />
+            <img src={getImageUrl(product.image)} alt={product.name} className="w-full h-full object-contain p-6" />
           ) : (
             <div className="w-full h-full flex items-center justify-center p-16">
-              <img src="/hit-logo.png" alt="ФК Хіт" className="w-32 h-40 object-contain opacity-20" />
+              <img src="/hit-logo.png" alt="ФК ХІТ" className="w-32 h-32 object-contain opacity-15" />
             </div>
           )}
         </div>
 
         <div className="py-2 md:py-6">
           {product.Category && (
-            <p className="text-gray-400 dark:text-white/40 text-xs uppercase tracking-widest mb-2">
+            <p className="font-heading font-semibold text-[10px] uppercase tracking-[.2em] text-hit-gold mb-2">
               {product.Category.name}
             </p>
           )}
-          <h1 className="font-heading font-bold text-2xl text-gray-900 dark:text-white leading-tight">{product.name}</h1>
-          <p className="text-hit-blue dark:text-hit-yellow font-heading font-bold text-2xl mt-3">
-            {Number(product.price).toLocaleString()} ₴
+          <h1 className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-cream leading-tight">{product.name}</h1>
+          <p className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-gold mt-3">
+            {Number(product.price).toLocaleString('uk-UA')} ₴
           </p>
 
-          {product.description && (
-            <p className="text-gray-500 dark:text-white/50 mt-5 leading-relaxed text-sm">{product.description}</p>
-          )}
-
           {hasSizes && (
-            <div className="mt-5">
-              <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider mb-2">розмір</p>
+            <div className="mt-6">
+              <p className="text-hit-muted dark:text-hit-cream/50 text-xs uppercase tracking-wider font-medium mb-2">Розмір</p>
               <div className="flex flex-wrap gap-2">
                 {sizeKeys.map((size) => {
                   const qty = sizesObj[size];
@@ -115,12 +121,12 @@ export default function ProductPage() {
                       key={size}
                       onClick={() => !outOfStock && setSelectedSize(size)}
                       disabled={outOfStock}
-                      className={`min-w-[40px] h-10 px-2 rounded-xl text-xs font-medium transition-all duration-300 relative ${
+                      className={`min-w-[44px] h-11 px-3 rounded-xl text-xs font-medium transition-all duration-300 relative ${
                         outOfStock
                           ? 'bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-300 dark:text-white/20 cursor-not-allowed line-through'
                           : selectedSize === size
-                            ? 'bg-hit-yellow text-[#0a0e1a] shadow-[0_0_12px_rgba(255,229,0,0.25)]'
-                            : 'bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-gray-500 dark:text-white/50 hover:border-gray-300 dark:hover:border-white/30'
+                            ? 'bg-hit-gold text-hit-blue font-bold shadow-[0_4px_12px_rgba(230,184,76,0.3)]'
+                            : 'bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 text-hit-ink dark:text-hit-cream/60 hover:border-hit-gold/40'
                       }`}
                     >
                       {size}
@@ -134,25 +140,107 @@ export default function ProductPage() {
             </div>
           )}
 
-          <div className="mt-7">
+          <div className="mt-7 flex items-center gap-4">
             <button onClick={handleAddToCart} className="btn-primary flex items-center gap-2">
-              <FiShoppingCart size={15} /> в кошик
+              <FiShoppingCart size={15} /> В кошик
             </button>
-          </div>
-
-          <div className="mt-4 text-xs">
-            {hasSizes && selectedSize && sizesObj[selectedSize] !== null ? (
-              sizesObj[selectedSize] > 0 ? (
-                <span className="text-green-500 dark:text-green-400/80">● в наявності ({sizesObj[selectedSize]} шт)</span>
+            <div className="text-xs">
+              {hasSizes && selectedSize && sizesObj[selectedSize] !== null ? (
+                sizesObj[selectedSize] > 0 ? (
+                  <span className="text-green-600 dark:text-green-400">● В наявності ({sizesObj[selectedSize]} шт)</span>
+                ) : (
+                  <span className="text-red-500 dark:text-red-400">● Немає в цьому розмірі</span>
+                )
+              ) : product.stock > 0 ? (
+                <span className="text-green-600 dark:text-green-400">● В наявності</span>
               ) : (
-                <span className="text-red-500 dark:text-red-400/80">● немає в цьому розмірі</span>
-              )
-            ) : product.stock > 0 ? (
-              <span className="text-green-500 dark:text-green-400/80">● в наявності</span>
-            ) : (
-              <span className="text-red-500 dark:text-red-400/80">● немає</span>
-            )}
+                <span className="text-red-500 dark:text-red-400">● Немає в наявності</span>
+              )}
+            </div>
           </div>
+        </div>
+      </div>
+
+      {/* Tabs */}
+      <div className="mt-12">
+        <div className="flex gap-1 border-b border-gray-100 dark:border-white/5">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-5 py-3 text-sm font-medium transition-colors relative ${
+                activeTab === tab.id
+                  ? 'text-hit-ink dark:text-hit-cream'
+                  : 'text-hit-muted dark:text-hit-cream/40 hover:text-hit-ink dark:hover:text-hit-cream/70'
+              }`}
+            >
+              {tab.label}
+              {activeTab === tab.id && (
+                <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-hit-gold rounded-full"></span>
+              )}
+            </button>
+          ))}
+        </div>
+
+        <div className="mt-6">
+          {activeTab === 'description' && (
+            <div className="max-w-2xl">
+              {product.description ? (
+                <p className="text-hit-ink/80 dark:text-hit-cream/70 text-sm leading-relaxed whitespace-pre-line">
+                  {product.description}
+                </p>
+              ) : (
+                <p className="text-hit-muted dark:text-hit-cream/40 text-sm">Опис відсутній</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'characteristics' && (
+            <div className="max-w-2xl">
+              {characteristics && Object.keys(characteristics).length > 0 ? (
+                <div className="space-y-0 divide-y divide-gray-100 dark:divide-white/5">
+                  {Object.entries(characteristics).map(([key, value]) => (
+                    <div key={key} className="flex justify-between py-3">
+                      <span className="text-hit-muted dark:text-hit-cream/50 text-sm">{key}</span>
+                      <span className="text-hit-ink dark:text-hit-cream text-sm font-medium">{value}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-hit-muted dark:text-hit-cream/40 text-sm">Характеристики не вказані</p>
+              )}
+            </div>
+          )}
+
+          {activeTab === 'sizeChart' && sizeChart && (
+            <div className="overflow-x-auto">
+              <table className="w-full max-w-2xl text-sm">
+                <thead>
+                  <tr>
+                    {sizeChart.headers.map((h) => (
+                      <th key={h} className="text-left py-3 px-3 text-hit-muted dark:text-hit-cream/50 font-medium text-xs uppercase tracking-wider border-b border-gray-100 dark:border-white/5">
+                        {h}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {sizeChart.rows.map((row, rIdx) => (
+                    <tr key={rIdx} className={`${hasSizes && selectedSize === row[0] ? 'bg-hit-gold/10' : ''}`}>
+                      {row.map((cell, idx) => (
+                        <td key={idx} className={`py-3 px-3 border-b border-gray-50 dark:border-white/5 ${idx === 0 ? 'font-heading font-bold text-hit-ink dark:text-hit-cream' : 'text-hit-ink/70 dark:text-hit-cream/60'}`}>
+                          {cell}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-4">
+                * Розміри вказані в сантиметрах. Можливе відхилення ±2 см.
+              </p>
+            </div>
+          )}
         </div>
       </div>
     </div>

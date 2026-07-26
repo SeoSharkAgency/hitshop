@@ -37,7 +37,7 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { name, description, price, categoryId, sizes, stock, featured } = req.body;
+    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     let parsedSizes = {};
@@ -54,6 +54,16 @@ exports.create = async (req, res) => {
       ? Object.values(parsedSizes).reduce((sum, qty) => sum + qty, 0)
       : (parseInt(stock) || 0);
 
+    let parsedCharacteristics = null;
+    if (characteristics && characteristics.trim()) {
+      parsedCharacteristics = JSON.parse(characteristics);
+    }
+
+    let parsedSizeChart = null;
+    if (sizeChart && sizeChart.trim()) {
+      parsedSizeChart = JSON.parse(sizeChart);
+    }
+
     const product = await Product.create({
       name,
       description,
@@ -63,6 +73,8 @@ exports.create = async (req, res) => {
       stock: totalStock,
       featured: featured === 'true',
       image,
+      characteristics: parsedCharacteristics,
+      sizeChart: parsedSizeChart,
     });
 
     const full = await Product.findByPk(product.id, {
@@ -83,13 +95,19 @@ exports.update = async (req, res) => {
     const oldSizes = product.sizes || {};
     const oldStock = product.stock;
 
-    const { name, description, price, categoryId, sizes, stock, featured } = req.body;
+    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart } = req.body;
     const updateData = {};
 
     if (name) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (price) updateData.price = price;
     if (categoryId) updateData.categoryId = categoryId;
+    if (characteristics !== undefined) {
+      updateData.characteristics = characteristics && characteristics.trim() ? JSON.parse(characteristics) : null;
+    }
+    if (sizeChart !== undefined) {
+      updateData.sizeChart = sizeChart && sizeChart.trim() ? JSON.parse(sizeChart) : null;
+    }
     if (sizes) {
       const parsed = JSON.parse(sizes);
       if (Array.isArray(parsed)) {

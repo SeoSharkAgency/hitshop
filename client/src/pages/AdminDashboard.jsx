@@ -543,6 +543,25 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     price: product?.price || '', categoryId: product?.categoryId || product?.category_id || '',
     featured: product?.featured || false,
   });
+  const [charRows, setCharRows] = useState(() => {
+    const chars = product?.characteristics;
+    if (chars && typeof chars === 'object') return Object.entries(chars).map(([key, value]) => ({ key, value }));
+    return [];
+  });
+  const [newCharKey, setNewCharKey] = useState('');
+  const [newCharValue, setNewCharValue] = useState('');
+
+  const [sizeChartHeaders, setSizeChartHeaders] = useState(() => {
+    const sc = product?.sizeChart;
+    if (sc && sc.headers) return sc.headers;
+    return ['Розмір', 'Груди (см)', 'Довжина (см)'];
+  });
+  const [sizeChartRows, setSizeChartRows] = useState(() => {
+    const sc = product?.sizeChart;
+    if (sc && sc.rows) return sc.rows;
+    return [];
+  });
+  const [sizeChartEnabled, setSizeChartEnabled] = useState(() => !!(product?.sizeChart));
   const [sizeRows, setSizeRows] = useState(() => {
     const rows = parseSizes(product?.sizes);
     return rows.length > 0 ? rows : [];
@@ -581,6 +600,20 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     formData.append('categoryId', form.categoryId);
     formData.append('featured', form.featured);
 
+    if (charRows.length > 0) {
+      const charsObj = {};
+      charRows.forEach(r => { if (r.key.trim()) charsObj[r.key.trim()] = r.value; });
+      formData.append('characteristics', JSON.stringify(charsObj));
+    } else {
+      formData.append('characteristics', '');
+    }
+
+    if (sizeChartEnabled && sizeChartRows.length > 0) {
+      formData.append('sizeChart', JSON.stringify({ headers: sizeChartHeaders, rows: sizeChartRows }));
+    } else {
+      formData.append('sizeChart', '');
+    }
+
     if (sizeRows.length > 0) {
       const sizesObj = {};
       sizeRows.forEach(r => { sizesObj[r.size] = r.qty; });
@@ -608,6 +641,30 @@ function ProductForm({ product, categories, onClose, onSaved }) {
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="md:col-span-2"><input type="text" placeholder="назва" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className={inputClass} /></div>
         <div className="md:col-span-2"><textarea placeholder="опис" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className={`${inputClass} resize-none`} /></div>
+        <div className="md:col-span-2">
+          <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider mb-2">характеристики</p>
+          {charRows.length > 0 && (
+            <div className="space-y-1.5 mb-3">
+              {charRows.map((row, idx) => (
+                <div key={idx} className="flex items-center gap-2">
+                  <span className="min-w-[100px] text-xs font-medium text-gray-900 dark:text-white bg-gray-100 dark:bg-white/10 rounded-lg py-1.5 px-2 truncate">{row.key}</span>
+                  <input type="text" value={row.value} onChange={(e) => { const rows = [...charRows]; rows[idx].value = e.target.value; setCharRows(rows); }}
+                    className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none" />
+                  <button type="button" onClick={() => setCharRows(charRows.filter((_, i) => i !== idx))} className="text-red-400 hover:text-red-500 text-xs">✕</button>
+                </div>
+              ))}
+            </div>
+          )}
+          <div className="flex items-center gap-2">
+            <input type="text" placeholder="назва (Матеріал, Сезон...)" value={newCharKey} onChange={(e) => setNewCharKey(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (newCharKey.trim() && newCharValue.trim()) { setCharRows([...charRows, { key: newCharKey.trim(), value: newCharValue.trim() }]); setNewCharKey(''); setNewCharValue(''); } } }}
+              className="w-40 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none" />
+            <input type="text" placeholder="значення" value={newCharValue} onChange={(e) => setNewCharValue(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); if (newCharKey.trim() && newCharValue.trim()) { setCharRows([...charRows, { key: newCharKey.trim(), value: newCharValue.trim() }]); setNewCharKey(''); setNewCharValue(''); } } }}
+              className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none" />
+            <button type="button" onClick={() => { if (newCharKey.trim() && newCharValue.trim()) { setCharRows([...charRows, { key: newCharKey.trim(), value: newCharValue.trim() }]); setNewCharKey(''); setNewCharValue(''); } }} className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline whitespace-nowrap">+ додати</button>
+          </div>
+        </div>
         <input type="number" placeholder="ціна" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className={inputClass} />
         <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required className={inputClass}>
           <option value="">категорія</option>
@@ -641,6 +698,45 @@ function ProductForm({ product, categories, onClose, onSaved }) {
               className="w-20 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1.5 text-gray-900 dark:text-white text-xs text-center placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none" />
             <button type="button" onClick={addSize} className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline">+ додати</button>
           </div>
+        </div>
+
+        {/* Розмірна сітка */}
+        <div className="md:col-span-2">
+          <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer mb-2">
+            <input type="checkbox" checked={sizeChartEnabled} onChange={(e) => setSizeChartEnabled(e.target.checked)} className="w-3.5 h-3.5 rounded" />
+            <span className="uppercase tracking-wider">розмірна сітка</span>
+          </label>
+          {sizeChartEnabled && (
+            <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3 space-y-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                <span className="text-[10px] text-gray-400 dark:text-white/30">Колонки:</span>
+                {sizeChartHeaders.map((h, idx) => (
+                  <div key={idx} className="flex items-center gap-1">
+                    <input type="text" value={h} onChange={(e) => { const nh = [...sizeChartHeaders]; nh[idx] = e.target.value; setSizeChartHeaders(nh); }}
+                      className="w-24 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-[10px] text-gray-900 dark:text-white focus:outline-none focus:border-hit-gold" />
+                    {idx > 0 && <button type="button" onClick={() => { setSizeChartHeaders(sizeChartHeaders.filter((_, i) => i !== idx)); setSizeChartRows(sizeChartRows.map(r => r.filter((_, i) => i !== idx))); }} className="text-red-400 text-[10px]">✕</button>}
+                  </div>
+                ))}
+              </div>
+              {sizeChartRows.length > 0 && (
+                <div className="space-y-1">
+                  {sizeChartRows.map((row, rIdx) => (
+                    <div key={rIdx} className="flex items-center gap-1">
+                      {row.map((cell, cIdx) => (
+                        <input key={cIdx} type="text" value={cell} onChange={(e) => { const nr = [...sizeChartRows]; nr[rIdx] = [...nr[rIdx]]; nr[rIdx][cIdx] = e.target.value; setSizeChartRows(nr); }}
+                          className="w-20 flex-1 bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded px-2 py-1 text-[10px] text-gray-900 dark:text-white focus:outline-none focus:border-hit-gold" />
+                      ))}
+                      <button type="button" onClick={() => setSizeChartRows(sizeChartRows.filter((_, i) => i !== rIdx))} className="text-red-400 text-[10px]">✕</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <div className="flex items-center gap-3">
+                <button type="button" onClick={() => setSizeChartRows([...sizeChartRows, sizeChartHeaders.map(() => '')])} className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline">+ рядок</button>
+                <button type="button" onClick={() => { setSizeChartHeaders([...sizeChartHeaders, 'Нова']); setSizeChartRows(sizeChartRows.map(r => [...r, ''])); }} className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline">+ колонка</button>
+              </div>
+            </div>
+          )}
         </div>
 
         <div><input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-hit-yellow file:text-[#0a0e1a] file:text-xs file:font-medium file:cursor-pointer" /></div>
