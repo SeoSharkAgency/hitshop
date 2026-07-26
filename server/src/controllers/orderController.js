@@ -1,12 +1,24 @@
-const { Order, OrderItem, Product, sequelize } = require('../models');
+const { Order, OrderItem, Product, User, sequelize } = require('../models');
 const { notifyNewOrder, notifyStatusChange } = require('../telegram');
 const { logAction } = require('../auditLog');
 const { sendOrderConfirmation } = require('../mailer');
+const jwt = require('jsonwebtoken');
+
+const JWT_SECRET = process.env.JWT_SECRET || 'hitshop-secret-key';
 
 exports.create = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const { customerName, customerPhone, customerEmail, deliveryAddress, deliveryCityRef, deliveryWarehouseRef, deliveryCost, notes, items } = req.body;
+
+    let userId = null;
+    const token = req.headers.authorization?.replace('Bearer ', '');
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        if (decoded.type === 'user') userId = decoded.id;
+      } catch {}
+    }
 
     if (!customerName || !customerPhone) {
       await t.rollback();
@@ -76,6 +88,7 @@ exports.create = async (req, res) => {
       total: total + (parseFloat(deliveryCost) || 0),
       status: 'new',
       paymentStatus: 'pending',
+      userId,
     }, { transaction: t });
 
     for (const item of items) {
@@ -101,6 +114,17 @@ exports.create = async (req, res) => {
     }
 
     await t.commit();
+
+    if (userId) {
+      try {
+        const u = await User.findByPk(userId);
+        if (u && !u.deliveryCity && req.body.city) {
+          u.deliveryCity = String(req.body.city).slice(0, 200);
+          u.deliveryWarehouse = req.body.warehouseNumber ? String(req.body.warehouseNumber).slice(0, 100) : null;
+          await u.save();
+        }
+      } catch {}
+    }
 
     const fullOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],

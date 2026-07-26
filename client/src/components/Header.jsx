@@ -3,10 +3,12 @@ import { FiShoppingCart, FiUser, FiMenu, FiX, FiSun, FiMoon } from 'react-icons/
 import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
+import { useUser } from '../context/UserContext';
 
 export default function Header() {
   const { totalItems } = useCart();
   const { dark, toggle } = useTheme();
+  const { user } = useUser();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -42,6 +44,17 @@ export default function Header() {
             {dark ? <FiSun size={15} /> : <FiMoon size={15} />}
           </button>
           <Link
+            to={user ? '/account' : '/account/login'}
+            className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/60 hover:text-hit-gold transition-colors"
+            title={user ? user.name : 'Увійти'}
+          >
+            {user ? (
+              <span className="font-heading font-bold text-xs text-hit-gold">{user.name.charAt(0).toUpperCase()}</span>
+            ) : (
+              <FiUser size={15} />
+            )}
+          </Link>
+          <Link
             to="/catalog"
             className="bg-hit-gold hover:bg-hit-gold-hi text-hit-blue font-heading font-bold text-xs uppercase tracking-wider px-5 py-2.5 rounded-full transition-colors"
           >
@@ -64,6 +77,16 @@ export default function Header() {
               </span>
             )}
           </Link>
+          <Link
+            to={user ? '/account' : '/account/login'}
+            className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/70"
+          >
+            {user ? (
+              <span className="font-heading font-bold text-xs text-hit-gold">{user.name.charAt(0).toUpperCase()}</span>
+            ) : (
+              <FiUser size={16} />
+            )}
+          </Link>
           <button
             onClick={() => setMenuOpen(!menuOpen)}
             className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/70"
@@ -77,7 +100,9 @@ export default function Header() {
         <div className="md:hidden bg-hit-blue border-t border-white/5 px-5 py-4 space-y-1">
           <Link to="/" onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">Головна</Link>
           <Link to="/catalog" onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">Каталог</Link>
-          <Link to="/admin" onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">Адмін</Link>
+          <Link to={user ? '/account' : '/account/login'} onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">
+            {user ? 'Мій кабінет' : 'Увійти'}
+          </Link>
         </div>
       )}
     </header>

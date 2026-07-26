@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from './context/AuthContext';
+import { useUser } from './context/UserContext';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import Home from './pages/Home';
@@ -12,11 +13,20 @@ import OrderSuccess from './pages/OrderSuccess';
 import OrderStatus from './pages/OrderStatus';
 import AdminLogin from './pages/AdminLogin';
 import AdminDashboard from './pages/AdminDashboard';
+import UserAuth from './pages/UserAuth';
+import UserCabinet from './pages/UserCabinet';
 
 function ProtectedRoute({ children }) {
   const { admin, loading } = useAuth();
   if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-hit-gold">Завантаження...</div></div>;
   if (!admin) return <Navigate to="/admin/login" replace />;
+  return children;
+}
+
+function UserRoute({ children }) {
+  const { user, loading } = useUser();
+  if (loading) return <div className="flex items-center justify-center min-h-screen"><div className="text-hit-gold">Завантаження...</div></div>;
+  if (!user) return <Navigate to="/account/login" replace />;
   return children;
 }
 
@@ -46,6 +56,8 @@ export default function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/order/:orderNumber" element={<OrderStatus />} />
           <Route path="/order-success/:id" element={<OrderSuccess />} />
+          <Route path="/account/login" element={<UserAuth />} />
+          <Route path="/account" element={<UserRoute><UserCabinet /></UserRoute>} />
           <Route path="/admin/login" element={<AdminLogin />} />
           <Route
             path="/admin"

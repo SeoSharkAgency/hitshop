@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import api from '../api';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
 
 export default function Checkout() {
   const { items, totalPrice, clearCart } = useCart();
+  const { user } = useUser();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [form, setForm] = useState({
@@ -16,6 +18,19 @@ export default function Checkout() {
     warehouseNumber: '',
     notes: '',
   });
+
+  useEffect(() => {
+    if (user) {
+      setForm((prev) => ({
+        ...prev,
+        customerName: prev.customerName || user.name || '',
+        customerPhone: prev.customerPhone || user.phone || '',
+        customerEmail: prev.customerEmail || user.email || '',
+        city: prev.city || user.deliveryCity || '',
+        warehouseNumber: prev.warehouseNumber || user.deliveryWarehouse || '',
+      }));
+    }
+  }, [user]);
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -41,10 +56,16 @@ export default function Checkout() {
         customerPhone: form.customerPhone,
         customerEmail: form.customerEmail,
         deliveryAddress: `м. ${form.city}, Нова Пошта №${form.warehouseNumber}`,
+        city: form.city,
+        warehouseNumber: form.warehouseNumber,
         notes: form.notes,
         items: orderItems,
       };
-      const res = await api.post('/orders', orderData);
+      const res = await api.post('/orders', orderData, {
+        headers: localStorage.getItem('userToken')
+          ? { Authorization: `Bearer ${localStorage.getItem('userToken')}` }
+          : {},
+      });
       clearCart();
       navigate(`/order/${res.data.orderNumber}`);
     } catch (err) {
