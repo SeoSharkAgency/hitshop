@@ -182,7 +182,7 @@ export default function AdminDashboard() {
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                     <div>
                       <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm">{order.orderNumber}</h3>
-                      <p className="text-gray-500 dark:text-white/50 text-xs mt-0.5">{order.customerName} • {order.customerPhone}</p>
+                      <p className="text-gray-500 dark:text-white/50 text-xs mt-0.5">{order.customerName} • {order.customerPhone}{order.customerEmail ? ` • ${order.customerEmail}` : ''}</p>
                       {order.deliveryAddress && <p className="text-gray-400 dark:text-white/30 text-xs mt-0.5">📦 {order.deliveryAddress}</p>}
                     </div>
                     <div className="text-right">

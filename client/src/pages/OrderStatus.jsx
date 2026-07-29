@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { FiCheckCircle, FiClock, FiTruck, FiPackage, FiXCircle, FiCopy } from 'react-icons/fi';
 import toast from 'react-hot-toast';
+import { QRCodeSVG } from 'qrcode.react';
 import api, { getImageUrl } from '../api';
 
 const STATUS_MAP = {
@@ -75,6 +76,13 @@ export default function OrderStatus() {
             <CopyRow label="Призначення" value={`Оплата за замовлення ${order.orderNumber}`} />
             <CopyRow label="Сума" value={`${Number(order.total).toLocaleString('uk-UA')} ₴`} bold />
           </div>
+          <PaymentQR
+            iban={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'}
+            recipient={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'}
+            edrpou={import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'}
+            amount={Number(order.total)}
+            purpose={`Оплата за замовлення ${order.orderNumber}`}
+          />
         </div>
       )}
 
@@ -158,6 +166,63 @@ export default function OrderStatus() {
       <div className="flex flex-wrap gap-3 justify-center mt-8">
         <Link to="/catalog" className="btn-primary">Ще мерч</Link>
         <Link to="/" className="btn-secondary">На головну</Link>
+      </div>
+    </div>
+  );
+}
+
+function PaymentQR({ iban, recipient, edrpou, amount, purpose }) {
+  const generateNbuQrUrl = () => {
+    const paymentData = [
+      'BCD',
+      '002',
+      '1',
+      'UCT',
+      '',
+      recipient.slice(0, 38),
+      iban,
+      `UAH${amount.toFixed(2)}`,
+      edrpou,
+      '',
+      '',
+      purpose.slice(0, 140),
+      '',
+      '',
+      '',
+      '',
+      '',
+    ].join('\n');
+
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(paymentData);
+    let binary = '';
+    for (let i = 0; i < bytes.length; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    const base64 = btoa(binary)
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=+$/, '');
+    return `https://bank.gov.ua/qr/${base64}`;
+  };
+
+  const nbuUrl = generateNbuQrUrl();
+
+  return (
+    <div className="mt-4 pt-4 border-t border-yellow-200 dark:border-yellow-500/20">
+      <p className="text-gray-500 dark:text-white/50 text-xs mb-3 text-center">Скануйте QR-код у додатку банку для оплати</p>
+      <div className="flex flex-col items-center">
+        <div className="bg-white p-4 rounded-xl shadow-sm">
+          <QRCodeSVG
+            value={nbuUrl}
+            size={180}
+            level="M"
+            includeMargin={false}
+          />
+        </div>
+        <p className="text-[10px] text-gray-400 dark:text-hit-cream/40 text-center mt-2">
+          Monobank, ПриватБанк, ПУМБ, Ощадбанк та інші
+        </p>
       </div>
     </div>
   );

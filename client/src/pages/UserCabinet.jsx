@@ -161,6 +161,9 @@ export default function UserCabinet() {
                           </p>
                         </div>
                       </div>
+                      <div className="mt-3 pt-3 border-t border-gray-50 dark:border-white/5">
+                        <span className="text-hit-gold text-xs font-medium">Переглянути статус замовлення →</span>
+                      </div>
                     </Link>
                   ))}
                 </div>
