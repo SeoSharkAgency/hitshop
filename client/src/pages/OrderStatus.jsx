@@ -67,15 +67,7 @@ export default function OrderStatus() {
       </div>
 
       {order.paymentStatus === 'pending' && order.status !== 'cancelled' && (
-        <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl p-5 mb-5">
-          <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-3">Реквізити для оплати</h3>
-          <div className="space-y-2 text-sm">
-            <CopyRow label="Одержувач" value={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'} />
-            <CopyRow label="IBAN" value={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'} mono />
-            <CopyRow label="ЄДРПОУ" value={import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'} />
-            <CopyRow label="Призначення" value={`Оплата за замовлення ${order.orderNumber}`} />
-            <CopyRow label="Сума" value={`${Number(order.total).toLocaleString('uk-UA')} ₴`} bold />
-          </div>
+        <div className="mb-5 space-y-4">
           <PaymentQR
             iban={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'}
             recipient={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'}
@@ -83,6 +75,16 @@ export default function OrderStatus() {
             amount={Number(order.total)}
             purpose={`Оплата за замовлення ${order.orderNumber}`}
           />
+          <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl p-5">
+            <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-3">Реквізити для оплати</h3>
+            <div className="space-y-2 text-sm">
+              <CopyRow label="Одержувач" value={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'} />
+              <CopyRow label="IBAN" value={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'} mono />
+              <CopyRow label="ЄДРПОУ" value={import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'} />
+              <CopyRow label="Призначення" value={`Оплата за замовлення ${order.orderNumber}`} />
+              <CopyRow label="Сума" value={`${Number(order.total).toLocaleString('uk-UA')} ₴`} bold />
+            </div>
+          </div>
         </div>
       )}
 
@@ -209,22 +211,29 @@ function PaymentQR({ iban, recipient, edrpou, amount, purpose }) {
   const nbuUrl = generateNbuQrUrl();
 
   return (
-    <div className="mt-4 pt-4 border-t border-yellow-200 dark:border-yellow-500/20">
-      <p className="text-gray-500 dark:text-white/50 text-xs mb-3 text-center">Скануйте QR або натисніть для оплати</p>
+    <div className="bg-white dark:bg-hit-blue/40 border border-gray-100 dark:border-white/5 rounded-2xl p-5">
       <div className="flex flex-col items-center">
-        <a href={nbuUrl} target="_blank" rel="noopener noreferrer" className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer">
+        <a
+          href={nbuUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="w-full bg-hit-gold hover:bg-hit-gold-hi text-hit-blue font-heading font-bold text-sm uppercase tracking-wider px-6 py-4 rounded-xl transition-all hover:shadow-[0_8px_24px_rgba(230,184,76,0.3)] text-center block"
+        >
+          Оплатити через додаток банку →
+        </a>
+        <p className="text-[10px] text-hit-muted dark:text-hit-cream/40 text-center mt-2 mb-4">
+          Monobank, ПриватБанк, ПУМБ, Ощадбанк та інші
+        </p>
+        <div className="bg-gray-50 dark:bg-hit-navy/30 p-4 rounded-xl">
           <QRCodeSVG
             value={nbuUrl}
-            size={180}
+            size={160}
             level="M"
             includeMargin={false}
           />
-        </a>
-        <a href={nbuUrl} target="_blank" rel="noopener noreferrer" className="mt-3 text-hit-gold hover:text-hit-gold-hi text-xs font-medium transition-colors">
-          Оплатити через додаток банку →
-        </a>
-        <p className="text-[10px] text-gray-400 dark:text-hit-cream/40 text-center mt-1">
-          Monobank, ПриватБанк, ПУМБ, Ощадбанк та інші
+        </div>
+        <p className="text-[10px] text-hit-muted dark:text-hit-cream/40 text-center mt-2">
+          Або скануйте QR-код камерою
         </p>
       </div>
     </div>
