@@ -210,17 +210,20 @@ function PaymentQR({ iban, recipient, edrpou, amount, purpose }) {
 
   return (
     <div className="mt-4 pt-4 border-t border-yellow-200 dark:border-yellow-500/20">
-      <p className="text-gray-500 dark:text-white/50 text-xs mb-3 text-center">Скануйте QR-код у додатку банку для оплати</p>
+      <p className="text-gray-500 dark:text-white/50 text-xs mb-3 text-center">Скануйте QR або натисніть для оплати</p>
       <div className="flex flex-col items-center">
-        <div className="bg-white p-4 rounded-xl shadow-sm">
+        <a href={nbuUrl} target="_blank" rel="noopener noreferrer" className="bg-white p-4 rounded-xl shadow-sm hover:shadow-md transition-shadow cursor-pointer">
           <QRCodeSVG
             value={nbuUrl}
             size={180}
             level="M"
             includeMargin={false}
           />
-        </div>
-        <p className="text-[10px] text-gray-400 dark:text-hit-cream/40 text-center mt-2">
+        </a>
+        <a href={nbuUrl} target="_blank" rel="noopener noreferrer" className="mt-3 text-hit-gold hover:text-hit-gold-hi text-xs font-medium transition-colors">
+          Оплатити через додаток банку →
+        </a>
+        <p className="text-[10px] text-gray-400 dark:text-hit-cream/40 text-center mt-1">
           Monobank, ПриватБанк, ПУМБ, Ощадбанк та інші
         </p>
       </div>
