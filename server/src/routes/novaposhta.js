@@ -258,4 +258,39 @@ router.get('/tracking', auth, async (req, res) => {
   }
 });
 
+router.post('/delete-ttn', auth, requireRole('admin', 'warehouse'), async (req, res) => {
+  try {
+    const { ttnRef, ttnNumber } = req.body;
+
+    if (!ttnRef && !ttnNumber) {
+      return res.status(400).json({ error: 'Вкажіть Ref або номер ТТН' });
+    }
+
+    let docRef = ttnRef;
+    if (!docRef && ttnNumber) {
+      const searchResult = await npRequest('InternetDocument', 'getDocumentList', {
+        IntDocNumber: ttnNumber,
+      });
+      docRef = searchResult.data?.[0]?.Ref;
+      if (!docRef) {
+        return res.status(400).json({ error: 'ТТН не знайдена в системі НП (можливо вже видалена)' });
+      }
+    }
+
+    const result = await npRequest('InternetDocument', 'delete', {
+      DocumentRefs: docRef,
+    });
+
+    if (!result.success) {
+      const errMsg = result.errors?.join(', ') || 'Помилка видалення ТТН';
+      return res.status(400).json({ error: errMsg });
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    console.error('NP delete-ttn error:', err.message);
+    res.status(500).json({ error: 'Помилка видалення ТТН' });
+  }
+});
+
 module.exports = router;

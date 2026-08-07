@@ -89,6 +89,32 @@ export default function AdminDashboard() {
     } catch { toast.error('Помилка збереження ТТН'); }
   };
 
+  const handleDeleteTTN = async (order) => {
+    if (!confirm(`Видалити ТТН ${order.ttnNumber}? Накладну буде видалено з Нової Пошти.`)) return;
+    try {
+      await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber });
+      await api.put(`/orders/${order.id}`, { ttnNumber: '', status: 'processing' });
+      toast.success('ТТН видалено');
+      setTrackingInfo((prev) => { const copy = { ...prev }; delete copy[order.id]; return copy; });
+      loadOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка видалення ТТН');
+    }
+  };
+
+  const handleRecreateTTN = async (order) => {
+    if (!confirm(`Перестворити ТТН для ${order.orderNumber}? Стара буде видалена.`)) return;
+    try {
+      await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber });
+    } catch {}
+    await api.put(`/orders/${order.id}`, { ttnNumber: '', status: 'processing' });
+    setTrackingInfo((prev) => { const copy = { ...prev }; delete copy[order.id]; return copy; });
+    loadOrders();
+    const updatedOrder = { ...order, ttnNumber: null };
+    setTtnModal(updatedOrder);
+    setTtnForm({ weight: '0.5', description: `Замовлення ${order.orderNumber}`, seatsAmount: '1' });
+  };
+
   const handleTrackTTN = async (ttn, orderId) => {
     try {
       const res = await api.get(`/novaposhta/tracking?ttn=${ttn}`);
@@ -259,7 +285,17 @@ export default function AdminDashboard() {
                           </a>
                           <button onClick={() => handleTrackTTN(order.ttnNumber, order.id)}
                             className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/50 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
-                            оновити статус
+                            статус
+                          </button>
+                          {order.deliveryCityRef && order.deliveryWarehouseRef && (
+                            <button onClick={() => handleRecreateTTN(order)}
+                              className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors">
+                              перестворити
+                            </button>
+                          )}
+                          <button onClick={() => handleDeleteTTN(order)}
+                            className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
+                            видалити
                           </button>
                         </div>
                         {trackingInfo[order.id] && (

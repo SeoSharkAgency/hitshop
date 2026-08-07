@@ -197,13 +197,13 @@ exports.updateStatus = async (req, res) => {
 
     if (status) order.status = status;
     if (paymentStatus) order.paymentStatus = paymentStatus;
-    if (ttnNumber) order.ttnNumber = String(ttnNumber).slice(0, 50);
+    if (ttnNumber !== undefined) order.ttnNumber = ttnNumber ? String(ttnNumber).slice(0, 50) : null;
     await order.save();
 
     const changes = [];
     if (status) changes.push(`статус → ${status}`);
     if (paymentStatus) changes.push(`оплата → ${paymentStatus}`);
-    if (ttnNumber) changes.push(`ТТН → ${ttnNumber}`);
+    if (ttnNumber !== undefined) changes.push(ttnNumber ? `ТТН → ${ttnNumber}` : 'ТТН видалено');
     logAction(req, 'update', 'order', order.id, `${order.orderNumber}: ${changes.join(', ')}`);
 
     if (status) notifyStatusChange(order, 'status', status, req.adminUsername);
