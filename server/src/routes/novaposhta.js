@@ -125,16 +125,17 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       return res.status(400).json({ error: 'Заповніть всі поля отримувача' });
     }
 
-    const nameParts = recipientName.trim().split(/\s+/);
+    const cleanName = (str) => str.replace(/[^а-яА-ЯіІїЇєЄґҐa-zA-Z'\-\s]/g, '').trim();
+    const nameParts = cleanName(recipientName).split(/\s+/).filter(Boolean);
     const lastName = nameParts[0] || 'Отримувач';
-    const firstName = nameParts[1] || '';
+    const firstName = nameParts[1] || lastName;
     const middleName = nameParts.slice(2).join(' ') || '';
 
     const counterpartyResult = await npRequest('Counterparty', 'save', {
-      FirstName: firstName || lastName,
+      FirstName: firstName,
       LastName: lastName,
-      MiddleName: middleName,
-      Phone: recipientPhone,
+      MiddleName: middleName || ' ',
+      Phone: recipientPhone.replace(/[^\d+]/g, ''),
       Email: '',
       CounterpartyType: 'PrivatePerson',
       CounterpartyProperty: 'Recipient',
