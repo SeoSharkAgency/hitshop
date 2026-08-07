@@ -195,7 +195,7 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
     const result = await npRequest('InternetDocument', 'save', {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
-      DateTime: new Date().toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' }),
+      DateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toLocaleDateString('uk-UA', { day: '2-digit', month: '2-digit', year: 'numeric' }),
       CargoType: 'Parcel',
       Weight: String(weight || '0.5'),
       ServiceType: 'WarehouseWarehouse',
