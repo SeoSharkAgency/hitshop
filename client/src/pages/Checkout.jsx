@@ -32,12 +32,33 @@ export default function Checkout() {
   const [showWarehouses, setShowWarehouses] = useState(false);
   const [warehouseLoading, setWarehouseLoading] = useState(false);
 
+  const formatPhone = (value) => {
+    const digits = value.replace(/\D/g, '');
+    let normalized = digits;
+    if (normalized.startsWith('380')) normalized = normalized;
+    else if (normalized.startsWith('80')) normalized = '3' + normalized;
+    else if (normalized.startsWith('0')) normalized = '38' + normalized;
+    else if (!normalized.startsWith('3')) normalized = '380' + normalized;
+
+    let formatted = '+';
+    for (let i = 0; i < normalized.length && i < 12; i++) {
+      if (i === 2) formatted += ' (';
+      if (i === 5) formatted += ') ';
+      if (i === 8) formatted += '-';
+      if (i === 10) formatted += '-';
+      formatted += normalized[i];
+    }
+    return formatted;
+  };
+
+  const getRawPhone = (formatted) => formatted.replace(/\D/g, '');
+
   useEffect(() => {
     if (user) {
       setForm((prev) => ({
         ...prev,
         customerName: prev.customerName || user.name || '',
-        customerPhone: prev.customerPhone || user.phone || '',
+        customerPhone: prev.customerPhone || (user.phone ? formatPhone(user.phone) : ''),
         customerEmail: prev.customerEmail || user.email || '',
       }));
       if (user.deliveryCity && !selectedCity) {
@@ -120,10 +141,30 @@ export default function Checkout() {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
+  const handleNameChange = (e) => {
+    const value = e.target.value.replace(/[^а-яА-ЯіІїЇєЄґҐa-zA-Z'\-\s]/g, '');
+    setForm({ ...form, customerName: value });
+  };
+
+  const handlePhoneChange = (e) => {
+    const raw = e.target.value;
+    if (raw === '' || raw === '+') { setForm({ ...form, customerPhone: '' }); return; }
+    setForm({ ...form, customerPhone: formatPhone(raw) });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!form.customerName || !form.customerPhone) {
-      toast.error("Вкажіть ім'я та телефон");
+    if (!form.customerName || form.customerName.trim().length < 2) {
+      toast.error("Вкажіть ім'я (мін. 2 символи, кирилиця)");
+      return;
+    }
+    const phoneDigits = getRawPhone(form.customerPhone);
+    if (phoneDigits.length < 12) {
+      toast.error('Вкажіть повний номер телефону');
+      return;
+    }
+    if (form.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail)) {
+      toast.error('Невірний формат email');
       return;
     }
     if (!selectedCity || !selectedWarehouse) {
@@ -136,8 +177,8 @@ export default function Checkout() {
         productId: item.id, quantity: item.quantity, size: item.size,
       }));
       const orderData = {
-        customerName: form.customerName,
-        customerPhone: form.customerPhone,
+        customerName: form.customerName.trim(),
+        customerPhone: '+' + phoneDigits,
         customerEmail: form.customerEmail,
         deliveryAddress: `${selectedCity.name}, ${selectedWarehouse.description}`,
         deliveryCityRef: selectedCity.ref,
@@ -171,8 +212,8 @@ export default function Checkout() {
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="bg-white dark:bg-hit-blue/40 border border-gray-100 dark:border-white/5 rounded-2xl p-5 space-y-3">
           <p className="text-hit-muted dark:text-hit-cream/40 text-xs uppercase tracking-widest mb-1">Контакти</p>
-          <input type="text" name="customerName" value={form.customerName} onChange={handleChange} required className={inputClass} placeholder="Ім'я" />
-          <input type="tel" name="customerPhone" value={form.customerPhone} onChange={handleChange} required className={inputClass} placeholder="Телефон" />
+          <input type="text" name="customerName" value={form.customerName} onChange={handleNameChange} required className={inputClass} placeholder="Прізвище та ім'я (кирилицею)" />
+          <input type="tel" name="customerPhone" value={form.customerPhone} onChange={handlePhoneChange} required className={inputClass} placeholder="+380 (XX) XXX-XX-XX" />
           <input type="email" name="customerEmail" value={form.customerEmail} onChange={handleChange} className={inputClass} placeholder="Email (для підтвердження)" />
         </div>
 
