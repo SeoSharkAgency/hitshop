@@ -56,6 +56,7 @@ function notifyStatusChange(order, field, newValue, changedBy) {
 
   let emoji = '🔄';
   let label = newValue;
+  let fieldName = 'Статус';
 
   if (field === 'status') {
     label = statusLabels[newValue] || newValue;
@@ -64,13 +65,18 @@ function notifyStatusChange(order, field, newValue, changedBy) {
     if (newValue === 'cancelled') emoji = '❌';
   } else if (field === 'paymentStatus') {
     label = paymentLabels[newValue] || newValue;
+    fieldName = 'Оплата';
     if (newValue === 'paid') emoji = '💳';
     if (newValue === 'failed') emoji = '⚠️';
+  } else if (field === 'delivery') {
+    emoji = '📬';
+    label = newValue;
+    fieldName = 'Доставка';
   }
 
   const text = `${emoji} <b>Статус змінено</b>\n\n` +
     `<b>${order.orderNumber}</b> — ${order.customerName}\n` +
-    `${field === 'status' ? 'Статус' : 'Оплата'}: <b>${label}</b>\n` +
+    `${fieldName}: <b>${label}</b>\n` +
     `👤 Змінив: <b>${changedBy || 'система'}</b>`;
 
   sendMessage(text);

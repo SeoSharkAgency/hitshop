@@ -220,6 +220,16 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
     }
 
     const ttn = result.data?.[0];
+
+    if (ttn?.IntDocNumber && process.env.API_URL) {
+      npRequest('TrackingDocument', 'save', {
+        DocumentNumber: ttn.IntDocNumber,
+        Phone: recipientPhone.replace(/[^\d]/g, ''),
+        ClientSystemName: 'HitShop',
+        URL: `${process.env.API_URL}/api/novaposhta/webhook`,
+      }).catch((err) => console.error('NP webhook subscribe error:', err.message));
+    }
+
     res.json({
       ttnNumber: ttn?.IntDocNumber || null,
       ttnRef: ttn?.Ref || null,
@@ -290,6 +300,56 @@ router.post('/delete-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
   } catch (err) {
     console.error('NP delete-ttn error:', err.message);
     res.status(500).json({ error: 'Помилка видалення ТТН' });
+  }
+});
+
+router.post('/webhook', async (req, res) => {
+  res.status(200).json({ ok: true });
+
+  try {
+    const data = Array.isArray(req.body) ? req.body : [req.body];
+
+    for (const event of data) {
+      const ttnNumber = event.Number || event.IntDocNumber || event.DocumentNumber;
+      const statusCode = event.StatusCode;
+      const status = event.Status;
+
+      if (!ttnNumber) continue;
+
+      const { Order } = require('../models');
+      const { notifyStatusChange } = require('../telegram');
+
+      const order = await Order.findOne({ where: { ttnNumber } });
+      if (!order) continue;
+
+      const NP_STATUS_MAP = {
+        '1': null,
+        '2': 'cancelled',
+        '3': null,
+        '4': 'shipped',
+        '5': 'shipped',
+        '6': 'shipped',
+        '7': 'shipped',
+        '9': 'delivered',
+        '10': 'delivered',
+        '11': 'delivered',
+        '14': 'delivered',
+        '101': 'shipped',
+        '102': 'shipped',
+        '103': 'shipped',
+        '108': 'cancelled',
+      };
+
+      const newOrderStatus = NP_STATUS_MAP[String(statusCode)];
+
+      if (newOrderStatus && order.status !== newOrderStatus) {
+        order.status = newOrderStatus;
+        await order.save();
+        notifyStatusChange(order, 'delivery', `${status} (НП код: ${statusCode})`, 'Нова Пошта');
+      }
+    }
+  } catch (err) {
+    console.error('NP webhook processing error:', err.message);
   }
 });
 
