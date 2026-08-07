@@ -19,6 +19,49 @@ async function npRequest(model, method, properties = {}) {
   return response.json();
 }
 
+router.get('/sender-info', auth, requireRole('admin'), async (req, res) => {
+  try {
+    const cpResult = await npRequest('Counterparty', 'getCounterparties', {
+      CounterpartyProperty: 'Sender',
+      Page: '1',
+    });
+
+    if (!cpResult.success || !cpResult.data?.length) {
+      return res.status(400).json({ error: 'Контрагент-відправник не знайдений', raw: cpResult.errors });
+    }
+
+    const sender = cpResult.data[0];
+    const senderRef = sender.Ref;
+
+    const contactResult = await npRequest('Counterparty', 'getCounterpartyContactPersons', {
+      Ref: senderRef,
+      Page: '1',
+    });
+
+    const contact = contactResult.data?.[0];
+
+    const addressResult = await npRequest('Counterparty', 'getCounterpartyAddresses', {
+      Ref: senderRef,
+      CounterpartyProperty: 'Sender',
+    });
+
+    const address = addressResult.data?.[0];
+
+    res.json({
+      NP_SENDER_REF: senderRef,
+      NP_SENDER_CITY_REF: address?.CityRef || 'не знайдено',
+      NP_SENDER_ADDRESS_REF: address?.Ref || 'не знайдено',
+      NP_SENDER_CONTACT_REF: contact?.Ref || 'не знайдено',
+      NP_SENDER_PHONE: contact?.Phones || 'не знайдено',
+      _senderName: sender.Description,
+      _addressDescription: address?.Description || '',
+      _contactName: contact?.Description || '',
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Помилка отримання даних відправника', details: err.message });
+  }
+});
+
 router.get('/cities', async (req, res) => {
   res.set('Cache-Control', 'no-store');
   try {
