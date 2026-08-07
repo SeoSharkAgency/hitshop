@@ -130,7 +130,76 @@ function startDailyReport() {
     }
   });
 
+  // Check NP delivery statuses every 30 minutes
+  cron.schedule('*/30 * * * *', async () => {
+    await checkDeliveryStatuses();
+  });
+
   console.log('Telegram daily report scheduled (9:00 AM Kyiv)');
+  console.log('NP delivery status check scheduled (every 30 min)');
 }
 
-module.exports = { sendMessage, notifyNewOrder, notifyStatusChange, startDailyReport };
+async function checkDeliveryStatuses() {
+  try {
+    const orders = await Order.findAll({
+      where: {
+        ttnNumber: { [Op.ne]: null, [Op.ne]: '' },
+        status: { [Op.in]: ['shipped', 'processing'] },
+      },
+    });
+
+    if (orders.length === 0) return;
+
+    const NP_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
+    const apiKey = process.env.NOVAPOSHTA_API_KEY;
+    if (!apiKey) return;
+
+    const documents = orders.map(o => ({ DocumentNumber: o.ttnNumber, Phone: '' }));
+
+    const response = await fetch(NP_API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        apiKey,
+        modelName: 'TrackingDocument',
+        calledMethod: 'getStatusDocuments',
+        methodProperties: { Documents: documents },
+      }),
+    });
+
+    const result = await response.json();
+    if (!result.success || !result.data) return;
+
+    const STATUS_MAP = {
+      '2': 'cancelled',
+      '4': 'shipped',
+      '5': 'shipped',
+      '6': 'shipped',
+      '7': 'shipped',
+      '9': 'delivered',
+      '10': 'delivered',
+      '11': 'delivered',
+      '14': 'delivered',
+      '101': 'shipped',
+      '102': 'shipped',
+      '103': 'shipped',
+      '108': 'cancelled',
+    };
+
+    for (const doc of result.data) {
+      const order = orders.find(o => o.ttnNumber === doc.Number);
+      if (!order) continue;
+
+      const newStatus = STATUS_MAP[String(doc.StatusCode)];
+      if (newStatus && order.status !== newStatus) {
+        order.status = newStatus;
+        await order.save();
+        notifyStatusChange(order, 'delivery', `${doc.Status}`, 'Нова Пошта (авто)');
+      }
+    }
+  } catch (err) {
+    console.error('NP status check error:', err.message);
+  }
+}
+
+module.exports = { sendMessage, notifyNewOrder, notifyStatusChange, startDailyReport, checkDeliveryStatuses };

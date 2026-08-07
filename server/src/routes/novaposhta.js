@@ -221,13 +221,9 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
 
     const ttn = result.data?.[0];
 
-    if (ttn?.IntDocNumber && process.env.API_URL) {
-      npRequest('TrackingDocument', 'save', {
-        DocumentNumber: ttn.IntDocNumber,
-        Phone: recipientPhone.replace(/[^\d]/g, ''),
-        ClientSystemName: 'HitShop',
-        URL: `${process.env.API_URL}/api/novaposhta/webhook`,
-      }).catch((err) => console.error('NP webhook subscribe error:', err.message));
+    if (ttn?.IntDocNumber) {
+      // Webhook subscription is not available in old NP API v2.0
+      // Status updates are handled by cron polling (see telegram.js)
     }
 
     res.json({
@@ -350,6 +346,16 @@ router.post('/webhook', async (req, res) => {
     }
   } catch (err) {
     console.error('NP webhook processing error:', err.message);
+  }
+});
+
+router.post('/check-statuses', auth, requireRole('admin', 'warehouse'), async (req, res) => {
+  try {
+    const { checkDeliveryStatuses } = require('../telegram');
+    await checkDeliveryStatuses();
+    res.json({ success: true, message: 'Перевірку запущено' });
+  } catch (err) {
+    res.status(500).json({ error: 'Помилка перевірки статусів' });
   }
 });
 
