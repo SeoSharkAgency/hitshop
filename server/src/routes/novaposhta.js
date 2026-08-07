@@ -125,6 +125,29 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       return res.status(400).json({ error: 'Заповніть всі поля отримувача' });
     }
 
+    const nameParts = recipientName.trim().split(/\s+/);
+    const lastName = nameParts[0] || 'Отримувач';
+    const firstName = nameParts[1] || '';
+    const middleName = nameParts.slice(2).join(' ') || '';
+
+    const counterpartyResult = await npRequest('Counterparty', 'save', {
+      FirstName: firstName || lastName,
+      LastName: lastName,
+      MiddleName: middleName,
+      Phone: recipientPhone,
+      Email: '',
+      CounterpartyType: 'PrivatePerson',
+      CounterpartyProperty: 'Recipient',
+    });
+
+    if (!counterpartyResult.success || !counterpartyResult.data?.[0]) {
+      const errMsg = counterpartyResult.errors?.join(', ') || 'Помилка створення отримувача';
+      return res.status(400).json({ error: errMsg });
+    }
+
+    const recipientRef = counterpartyResult.data[0].Ref;
+    const contactRecipientRef = counterpartyResult.data[0].ContactPerson?.data?.[0]?.Ref || '';
+
     const result = await npRequest('InternetDocument', 'save', {
       PayerType: 'Recipient',
       PaymentMethod: 'Cash',
@@ -141,9 +164,9 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       ContactSender: process.env.NP_SENDER_CONTACT_REF,
       SendersPhone: process.env.NP_SENDER_PHONE,
       CityRecipient: recipientCityRef,
-      Recipient: process.env.NP_SENDER_REF,
+      Recipient: recipientRef,
       RecipientAddress: recipientWarehouseRef,
-      ContactRecipient: recipientName,
+      ContactRecipient: contactRecipientRef,
       RecipientsPhone: recipientPhone,
     });
 
@@ -159,7 +182,35 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       estimatedDeliveryDate: ttn?.EstimatedDeliveryDate || null,
     });
   } catch (err) {
+    console.error('NP create-ttn error:', err.message);
     res.status(500).json({ error: 'Помилка створення ТТН' });
+  }
+});
+
+router.get('/tracking', auth, async (req, res) => {
+  try {
+    const { ttn } = req.query;
+    if (!ttn) return res.status(400).json({ error: 'Вкажіть номер ТТН' });
+
+    const result = await npRequest('TrackingDocument', 'getStatusDocuments', {
+      Documents: [{ DocumentNumber: ttn, Phone: '' }],
+    });
+
+    if (!result.success || !result.data?.[0]) {
+      return res.json({ status: 'Невідомо', statusCode: 0 });
+    }
+
+    const doc = result.data[0];
+    res.json({
+      status: doc.Status || 'Невідомо',
+      statusCode: doc.StatusCode || 0,
+      scheduledDeliveryDate: doc.ScheduledDeliveryDate || null,
+      actualDeliveryDate: doc.ActualDeliveryDate || null,
+      warehouseRecipient: doc.WarehouseRecipient || null,
+      cityRecipient: doc.CityRecipient || null,
+    });
+  } catch {
+    res.status(500).json({ error: 'Помилка відстеження' });
   }
 });
 

@@ -47,7 +47,14 @@ export default function AdminDashboard() {
     catch { toast.error('помилка'); }
   };
 
+  const [ttnModal, setTtnModal] = useState(null);
+  const [ttnForm, setTtnForm] = useState({ weight: '0.5', description: 'Спортивна атрибутика ФК Хіт', seatsAmount: '1' });
+  const [ttnLoading, setTtnLoading] = useState(false);
+  const [manualTtn, setManualTtn] = useState({});
+  const [trackingInfo, setTrackingInfo] = useState({});
+
   const handleCreateTTN = async (order) => {
+    setTtnLoading(true);
     try {
       const res = await api.post('/novaposhta/create-ttn', {
         orderId: order.id,
@@ -55,18 +62,38 @@ export default function AdminDashboard() {
         recipientWarehouseRef: order.deliveryWarehouseRef,
         recipientName: order.customerName,
         recipientPhone: order.customerPhone,
-        weight: '0.5',
+        weight: ttnForm.weight || '0.5',
         cost: String(order.total),
-        description: `Замовлення ${order.orderNumber}`,
+        description: ttnForm.description || `Замовлення ${order.orderNumber}`,
+        seatsAmount: ttnForm.seatsAmount || '1',
       });
       if (res.data.ttnNumber) {
         await api.put(`/orders/${order.id}`, { ttnNumber: res.data.ttnNumber, status: 'shipped' });
         toast.success(`ТТН створено: ${res.data.ttnNumber}`);
+        setTtnModal(null);
         loadOrders();
       }
     } catch (err) {
       toast.error(err.response?.data?.error || 'Помилка створення ТТН');
-    }
+    } finally { setTtnLoading(false); }
+  };
+
+  const handleManualTTN = async (orderId) => {
+    const ttn = manualTtn[orderId];
+    if (!ttn || ttn.trim().length < 10) { toast.error('Вкажіть коректний номер ТТН'); return; }
+    try {
+      await api.put(`/orders/${orderId}`, { ttnNumber: ttn.trim(), status: 'shipped' });
+      toast.success('ТТН збережено');
+      setManualTtn({ ...manualTtn, [orderId]: '' });
+      loadOrders();
+    } catch { toast.error('Помилка збереження ТТН'); }
+  };
+
+  const handleTrackTTN = async (ttn, orderId) => {
+    try {
+      const res = await api.get(`/novaposhta/tracking?ttn=${ttn}`);
+      setTrackingInfo({ ...trackingInfo, [orderId]: res.data });
+    } catch { toast.error('Помилка відстеження'); }
   };
 
   const pillClass = (active) => `flex items-center gap-1.5 px-4 py-2 rounded-full text-xs font-medium transition-all ${
@@ -219,26 +246,54 @@ export default function AdminDashboard() {
 
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/5">
                     {order.ttnNumber ? (
-                      <div className="flex items-center gap-2">
-                        <span className="text-gray-400 dark:text-white/40 text-xs">ТТН:</span>
-                        <a
-                          href={`https://novaposhta.ua/tracking/?cargo_number=${order.ttnNumber}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline"
-                        >
-                          {order.ttnNumber}
-                        </a>
+                      <div className="space-y-1.5">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-gray-400 dark:text-white/40 text-xs">ТТН:</span>
+                          <a
+                            href={`https://novaposhta.ua/tracking/?cargo_number=${order.ttnNumber}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline"
+                          >
+                            {order.ttnNumber}
+                          </a>
+                          <button onClick={() => handleTrackTTN(order.ttnNumber, order.id)}
+                            className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/50 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                            оновити статус
+                          </button>
+                        </div>
+                        {trackingInfo[order.id] && (
+                          <p className="text-green-600 dark:text-green-400 text-[11px]">
+                            {trackingInfo[order.id].status}
+                            {trackingInfo[order.id].scheduledDeliveryDate && ` • очік: ${trackingInfo[order.id].scheduledDeliveryDate}`}
+                          </p>
+                        )}
                       </div>
                     ) : order.deliveryCityRef && order.deliveryWarehouseRef ? (
-                      <button
-                        onClick={() => handleCreateTTN(order)}
-                        className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        📦 Створити ТТН
-                      </button>
+                      <div className="space-y-2">
+                        <button
+                          onClick={() => { setTtnModal(order); setTtnForm({ weight: '0.5', description: `Замовлення ${order.orderNumber}`, seatsAmount: '1' }); }}
+                          className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                          📦 Створити ТТН через НП
+                        </button>
+                        <div className="flex items-center gap-1.5">
+                          <input type="text" placeholder="або вставте ТТН вручну" value={manualTtn[order.id] || ''}
+                            onChange={(e) => setManualTtn({ ...manualTtn, [order.id]: e.target.value })}
+                            className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-gold focus:outline-none" />
+                          <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
+                        </div>
+                      </div>
                     ) : (
-                      <p className="text-gray-300 dark:text-white/20 text-[10px]">НП дані відсутні</p>
+                      <div className="space-y-2">
+                        <p className="text-gray-300 dark:text-white/20 text-[10px]">НП ref-и відсутні (ручне замовлення)</p>
+                        <div className="flex items-center gap-1.5">
+                          <input type="text" placeholder="вставте ТТН вручну" value={manualTtn[order.id] || ''}
+                            onChange={(e) => setManualTtn({ ...manualTtn, [order.id]: e.target.value })}
+                            className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-gold focus:outline-none" />
+                          <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
+                        </div>
+                      </div>
                     )}
                   </div>
                 </div>
@@ -251,6 +306,42 @@ export default function AdminDashboard() {
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
       {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
+
+      {/* TTN creation modal */}
+      {ttnModal && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setTtnModal(null)}>
+          <div className="bg-white dark:bg-hit-blue border border-gray-200 dark:border-white/10 rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+            <h3 className="font-heading font-bold text-gray-900 dark:text-white text-sm mb-1">Створити ТТН</h3>
+            <p className="text-gray-400 dark:text-white/40 text-xs mb-4">
+              {ttnModal.orderNumber} — {ttnModal.customerName} • {ttnModal.deliveryAddress}
+            </p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-gray-500 dark:text-white/50 text-[10px] uppercase tracking-wider mb-1 block">Вага (кг)</label>
+                <input type="text" value={ttnForm.weight} onChange={(e) => setTtnForm({ ...ttnForm, weight: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-hit-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-gray-500 dark:text-white/50 text-[10px] uppercase tracking-wider mb-1 block">Кількість місць</label>
+                <input type="text" value={ttnForm.seatsAmount} onChange={(e) => setTtnForm({ ...ttnForm, seatsAmount: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-hit-gold focus:outline-none" />
+              </div>
+              <div>
+                <label className="text-gray-500 dark:text-white/50 text-[10px] uppercase tracking-wider mb-1 block">Опис вмісту</label>
+                <input type="text" value={ttnForm.description} onChange={(e) => setTtnForm({ ...ttnForm, description: e.target.value })}
+                  className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-hit-gold focus:outline-none" />
+              </div>
+              <div className="flex gap-2 pt-2">
+                <button onClick={() => handleCreateTTN(ttnModal)} disabled={ttnLoading}
+                  className="btn-primary text-xs flex-1 disabled:opacity-50">
+                  {ttnLoading ? 'Створення...' : '📦 Створити накладну'}
+                </button>
+                <button onClick={() => setTtnModal(null)} className="btn-secondary text-xs">Скасувати</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
