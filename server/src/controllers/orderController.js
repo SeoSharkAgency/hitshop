@@ -25,6 +25,11 @@ exports.create = async (req, res) => {
       return res.status(400).json({ error: "Вкажіть ім'я та телефон" });
     }
 
+    if (!customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(customerEmail))) {
+      await t.rollback();
+      return res.status(400).json({ error: 'Вкажіть коректний email' });
+    }
+
     if (!items || items.length === 0) {
       await t.rollback();
       return res.status(400).json({ error: 'Кошик порожній' });

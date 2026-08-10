@@ -163,8 +163,8 @@ export default function Checkout() {
       toast.error('Вкажіть повний номер телефону');
       return;
     }
-    if (form.customerEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail)) {
-      toast.error('Невірний формат email');
+    if (!form.customerEmail || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(form.customerEmail)) {
+      toast.error('Вкажіть коректний email для підтвердження замовлення');
       return;
     }
     if (!selectedCity || !selectedWarehouse) {
@@ -214,7 +214,7 @@ export default function Checkout() {
           <p className="text-hit-muted dark:text-hit-cream/40 text-xs uppercase tracking-widest mb-1">Контакти</p>
           <input type="text" name="customerName" value={form.customerName} onChange={handleNameChange} required className={inputClass} placeholder="Прізвище та ім'я (кирилицею)" />
           <input type="tel" name="customerPhone" value={form.customerPhone} onChange={handlePhoneChange} required className={inputClass} placeholder="+380 (XX) XXX-XX-XX" />
-          <input type="email" name="customerEmail" value={form.customerEmail} onChange={handleChange} className={inputClass} placeholder="Email (для підтвердження)" />
+          <input type="email" name="customerEmail" value={form.customerEmail} onChange={handleChange} required className={inputClass} placeholder="Email (для підтвердження)" />
         </div>
 
         <div className="bg-white dark:bg-hit-blue/40 border border-gray-100 dark:border-white/5 rounded-2xl p-5 space-y-3">

@@ -16,6 +16,7 @@ async function sendMessage(text) {
         chat_id: CHAT_ID,
         text,
         parse_mode: 'HTML',
+        disable_web_page_preview: true,
       }),
     });
   } catch (err) {
@@ -23,18 +24,27 @@ async function sendMessage(text) {
   }
 }
 
+function getOrderTrackingUrl(orderNumber) {
+  const clientUrl = (process.env.CLIENT_URL || 'http://localhost:5173').replace(/\/$/, '');
+  return `${clientUrl}/order/${orderNumber}`;
+}
+
 function notifyNewOrder(order) {
   const items = order.items?.map(i =>
     `  • ${i.Product?.name || 'товар'} ${i.size ? `(${i.size})` : ''} × ${i.quantity}`
   ).join('\n') || '';
 
+  const trackingUrl = getOrderTrackingUrl(order.orderNumber);
+
   const text = `🛒 <b>Нове замовлення!</b>\n\n` +
     `<b>${order.orderNumber}</b>\n` +
     `👤 ${order.customerName}\n` +
     `📱 ${order.customerPhone}\n` +
+    `${order.customerEmail ? `✉️ ${order.customerEmail}\n` : ''}` +
     `${order.deliveryAddress ? `📦 ${order.deliveryAddress}\n` : ''}` +
     `${items ? `\n${items}\n` : ''}` +
-    `\n💰 <b>${Number(order.total).toLocaleString('uk-UA')} ₴</b>`;
+    `\n💰 <b>${Number(order.total).toLocaleString('uk-UA')} ₴</b>\n\n` +
+    `🔗 <a href="${trackingUrl}">Відстежити замовлення</a>`;
 
   sendMessage(text);
 }
@@ -85,7 +95,6 @@ function notifyStatusChange(order, field, newValue, changedBy) {
 function startDailyReport() {
   if (!BOT_TOKEN || !CHAT_ID) return;
 
-  // Every day at 9:00 AM Kyiv time (UTC+3 = 6:00 UTC)
   cron.schedule('0 6 * * *', async () => {
     try {
       const now = new Date();
@@ -130,7 +139,6 @@ function startDailyReport() {
     }
   });
 
-  // Check NP delivery statuses every 30 minutes
   cron.schedule('*/30 * * * *', async () => {
     await checkDeliveryStatuses();
   });
