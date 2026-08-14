@@ -75,19 +75,14 @@ exports.create = async (req, res) => {
         }
       }
 
-      if (product.printNumberEnabled) {
-        const num = String(item.printNumber || '').trim();
-        if (!num) {
-          await t.rollback();
-          return res.status(400).json({ error: `"${product.name}" — вкажіть номер набивки` });
-        }
+      // Набивка опційна: клієнт сам обирає «Додати набивку» на фронті
+      if (!product.printNumberEnabled && item.printNumber) {
+        await t.rollback();
+        return res.status(400).json({ error: `"${product.name}" — набивка номера недоступна` });
       }
-      if (product.printNameEnabled) {
-        const namePrint = String(item.printName || '').trim();
-        if (!namePrint) {
-          await t.rollback();
-          return res.status(400).json({ error: `"${product.name}" — вкажіть текст для набивки` });
-        }
+      if (!product.printNameEnabled && item.printName) {
+        await t.rollback();
+        return res.status(400).json({ error: `"${product.name}" — набивка тексту недоступна` });
       }
 
       total += parseFloat(product.price) * item.quantity;
