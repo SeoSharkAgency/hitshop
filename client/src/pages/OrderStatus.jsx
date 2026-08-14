@@ -23,12 +23,23 @@ const PAYMENT_MAP = {
 export default function OrderStatus() {
   const { orderNumber } = useParams();
   const [order, setOrder] = useState(null);
+  const [paymentDetails, setPaymentDetails] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    api.get(`/orders/track/${orderNumber}`)
-      .then(res => setOrder(res.data))
+    Promise.all([
+      api.get(`/orders/track/${orderNumber}`),
+      api.get('/settings/payment').catch(() => ({ data: null })),
+    ])
+      .then(([orderRes, paymentRes]) => {
+        setOrder(orderRes.data);
+        setPaymentDetails(paymentRes.data || {
+          recipient: import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ',
+          iban: import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000',
+          edrpou: import.meta.env.VITE_PAYMENT_EDRPOU || '00000000',
+        });
+      })
       .catch(() => setError('Замовлення не знайдено'))
       .finally(() => setLoading(false));
   }, [orderNumber]);
@@ -50,6 +61,9 @@ export default function OrderStatus() {
   const status = STATUS_MAP[order.status] || STATUS_MAP.new;
   const payment = PAYMENT_MAP[order.paymentStatus] || PAYMENT_MAP.pending;
   const StatusIcon = status.icon;
+  const recipient = paymentDetails?.recipient || 'ФК ХІТ Київ';
+  const iban = paymentDetails?.iban || 'UA000000000000000000000000000';
+  const edrpou = paymentDetails?.edrpou || '00000000';
 
   return (
     <div className="pt-24 max-w-lg mx-auto px-4 pb-16">
@@ -69,18 +83,18 @@ export default function OrderStatus() {
       {order.paymentStatus === 'pending' && order.status !== 'cancelled' && (
         <div className="mb-5 space-y-4">
           <PaymentQR
-            iban={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'}
-            recipient={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'}
-            edrpou={import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'}
+            iban={iban}
+            recipient={recipient}
+            edrpou={edrpou}
             amount={Number(order.total)}
             purpose={`Оплата за замовлення ${order.orderNumber}`}
           />
           <div className="bg-yellow-50 dark:bg-yellow-500/10 border border-yellow-200 dark:border-yellow-500/20 rounded-2xl p-5">
             <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-3">Реквізити для оплати</h3>
             <div className="space-y-2 text-sm">
-              <CopyRow label="Одержувач" value={import.meta.env.VITE_PAYMENT_RECIPIENT || 'ФК ХІТ Київ'} />
-              <CopyRow label="IBAN" value={import.meta.env.VITE_PAYMENT_IBAN || 'UA000000000000000000000000000'} mono />
-              <CopyRow label="ЄДРПОУ" value={import.meta.env.VITE_PAYMENT_EDRPOU || '00000000'} />
+              <CopyRow label="Одержувач" value={recipient} />
+              <CopyRow label="IBAN" value={iban} mono />
+              <CopyRow label="ЄДРПОУ" value={edrpou} />
               <CopyRow label="Призначення" value={`Оплата за замовлення ${order.orderNumber}`} />
               <CopyRow label="Сума" value={`${Number(order.total).toLocaleString('uk-UA')} ₴`} bold />
             </div>

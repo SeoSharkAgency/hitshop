@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2 } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2, FiCreditCard } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -24,6 +24,7 @@ export default function AdminDashboard() {
   const canOrders = role === 'admin' || role === 'accountant';
   const canUsers = role === 'admin';
   const canAnalytics = role === 'admin' || role === 'accountant';
+  const canPayment = role === 'admin' || role === 'accountant';
 
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
@@ -157,6 +158,11 @@ export default function AdminDashboard() {
         {canAnalytics && (
           <button onClick={() => setTab('analytics')} className={pillClass(tab === 'analytics')}>
             <FiBarChart2 size={13} /> аналітика
+          </button>
+        )}
+        {canPayment && (
+          <button onClick={() => setTab('payment')} className={pillClass(tab === 'payment')}>
+            <FiCreditCard size={13} /> реквізити
           </button>
         )}
         {canUsers && (
@@ -342,6 +348,7 @@ export default function AdminDashboard() {
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
       {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
+      {tab === 'payment' && canPayment && <PaymentSettingsPanel />}
 
       {/* TTN creation modal */}
       {ttnModal && (
@@ -378,6 +385,96 @@ export default function AdminDashboard() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function PaymentSettingsPanel() {
+  const [form, setForm] = useState({ recipient: '', iban: '', edrpou: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const inputClass = "w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none transition-all";
+
+  useEffect(() => {
+    api.get('/settings/payment')
+      .then((res) => setForm({
+        recipient: res.data.recipient || '',
+        iban: res.data.iban || '',
+        edrpou: res.data.edrpou || '',
+      }))
+      .catch(() => toast.error('Не вдалося завантажити реквізити'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await api.put('/settings/payment', form);
+      setForm({
+        recipient: res.data.recipient || '',
+        iban: res.data.iban || '',
+        edrpou: res.data.edrpou || '',
+      });
+      toast.success('Реквізити збережено');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка збереження');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <p className="text-gray-400 dark:text-white/40 text-sm">Завантаження...</p>;
+  }
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
+        <h2 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-1">Реквізити для оплати</h2>
+        <p className="text-gray-400 dark:text-white/40 text-xs mb-5">
+          Відображаються на сторінці замовлення та в email-підтвердженні
+        </p>
+        <form onSubmit={handleSave} className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-white/40 mb-1">Одержувач</label>
+            <input
+              type="text"
+              value={form.recipient}
+              onChange={(e) => setForm({ ...form, recipient: e.target.value })}
+              required
+              className={inputClass}
+              placeholder="ГО ФК ХІТ"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-white/40 mb-1">IBAN</label>
+            <input
+              type="text"
+              value={form.iban}
+              onChange={(e) => setForm({ ...form, iban: e.target.value.toUpperCase() })}
+              required
+              className={`${inputClass} font-mono`}
+              placeholder="UA333005280000026007455026872"
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-white/40 mb-1">ЄДРПОУ</label>
+            <input
+              type="text"
+              value={form.edrpou}
+              onChange={(e) => setForm({ ...form, edrpou: e.target.value.replace(/\D/g, '') })}
+              required
+              className={inputClass}
+              placeholder="40713730"
+            />
+          </div>
+          <button type="submit" disabled={saving} className="btn-primary text-xs disabled:opacity-50 mt-2">
+            {saving ? 'Збереження...' : 'Зберегти'}
+          </button>
+        </form>
+      </div>
     </div>
   );
 }

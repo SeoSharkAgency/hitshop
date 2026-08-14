@@ -1,4 +1,5 @@
 const nodemailer = require('nodemailer');
+const { getPaymentDetails } = require('./settings');
 
 const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
@@ -15,6 +16,7 @@ async function sendOrderConfirmation(order, items) {
 
   const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
   const orderUrl = `${clientUrl}/order/${order.orderNumber}`;
+  const payment = await getPaymentDetails();
 
   const itemsHtml = items.map(item =>
     `<tr>
@@ -57,9 +59,9 @@ async function sendOrderConfirmation(order, items) {
 
       <div style="background:#fff3cd;border:1px solid #ffc107;border-radius:12px;padding:20px;margin-bottom:20px;">
         <h3 style="margin:0 0 12px;color:#856404;">Реквізити для оплати</h3>
-        <p style="margin:4px 0;color:#333;"><strong>Одержувач:</strong> ${process.env.PAYMENT_RECIPIENT || 'ФК ХІТ Київ'}</p>
-        <p style="margin:4px 0;color:#333;"><strong>IBAN:</strong> ${process.env.PAYMENT_IBAN || 'UA000000000000000000000000000'}</p>
-        <p style="margin:4px 0;color:#333;"><strong>ЄДРПОУ:</strong> ${process.env.PAYMENT_EDRPOU || '00000000'}</p>
+        <p style="margin:4px 0;color:#333;"><strong>Одержувач:</strong> ${payment.recipient}</p>
+        <p style="margin:4px 0;color:#333;"><strong>IBAN:</strong> ${payment.iban}</p>
+        <p style="margin:4px 0;color:#333;"><strong>ЄДРПОУ:</strong> ${payment.edrpou}</p>
         <p style="margin:4px 0;color:#333;"><strong>Призначення:</strong> Оплата за замовлення ${order.orderNumber}</p>
       </div>
 
