@@ -80,4 +80,31 @@ router.get('/logs', authMiddleware, requireRole('admin'), async (req, res) => {
   } catch { res.status(500).json({ error: 'Помилка' }); }
 });
 
+router.delete('/logs/:id', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const log = await AuditLog.findByPk(req.params.id);
+    if (!log) return res.status(404).json({ error: 'Запис не знайдено' });
+
+    const summary = `${log.action}/${log.entity}` + (log.details ? `: ${String(log.details).slice(0, 120)}` : '');
+    await log.destroy();
+    logAction(req, 'delete', 'audit_log', parseInt(req.params.id, 10), `Видалено запис журналу (${summary})`);
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete audit log error:', err.message);
+    res.status(500).json({ error: 'Помилка видалення' });
+  }
+});
+
+router.delete('/logs', authMiddleware, requireRole('admin'), async (req, res) => {
+  try {
+    const count = await AuditLog.count();
+    await AuditLog.destroy({ where: {} });
+    logAction(req, 'delete', 'audit_log', null, `Очищено журнал (${count} записів)`);
+    res.json({ success: true, deleted: count });
+  } catch (err) {
+    console.error('Clear audit logs error:', err.message);
+    res.status(500).json({ error: 'Помилка очищення журналу' });
+  }
+});
+
 module.exports = router;

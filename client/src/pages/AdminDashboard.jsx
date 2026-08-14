@@ -188,7 +188,7 @@ export default function AdminDashboard() {
   const handleDeleteTTN = async (order) => {
     if (!confirm(`Видалити ТТН ${order.ttnNumber}? Накладну буде видалено з Нової Пошти.`)) return;
     try {
-      await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber });
+      await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber, orderId: order.id });
       await api.put(`/orders/${order.id}`, { ttnNumber: '', status: 'processing' });
       toast.success('ТТН видалено');
       setTrackingInfo((prev) => { const copy = { ...prev }; delete copy[order.id]; return copy; });
@@ -198,10 +198,27 @@ export default function AdminDashboard() {
     }
   };
 
+  const handleDeleteOrder = async (order) => {
+    if (!confirm(`Видалити замовлення ${order.orderNumber}? Цю дію неможливо скасувати.`)) return;
+    try {
+      if (order.ttnNumber) {
+        try {
+          await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber, orderId: order.id });
+        } catch {}
+      }
+      await api.delete(`/orders/${order.id}`);
+      toast.success('Замовлення видалено');
+      setTrackingInfo((prev) => { const copy = { ...prev }; delete copy[order.id]; return copy; });
+      loadOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка видалення замовлення');
+    }
+  };
+
   const handleRecreateTTN = async (order) => {
     if (!confirm(`Перестворити ТТН для ${order.orderNumber}? Стара буде видалена.`)) return;
     try {
-      await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber });
+      await api.post('/novaposhta/delete-ttn', { ttnNumber: order.ttnNumber, orderId: order.id });
     } catch {}
     await api.put(`/orders/${order.id}`, { ttnNumber: '', status: 'processing' });
     setTrackingInfo((prev) => { const copy = { ...prev }; delete copy[order.id]; return copy; });
@@ -341,6 +358,15 @@ export default function AdminDashboard() {
                     <div className="text-right">
                       <p className="font-heading font-bold text-hit-blue dark:text-hit-yellow">{Number(order.total).toLocaleString()} ₴</p>
                       <p className="text-gray-400 dark:text-white/30 text-[10px] mt-0.5">{new Date(order.createdAt).toLocaleDateString('uk-UA')}</p>
+                      {role === 'admin' && (
+                        <button
+                          onClick={() => handleDeleteOrder(order)}
+                          className="mt-2 inline-flex items-center gap-1 text-[10px] text-red-500 hover:text-red-600 transition-colors"
+                          title="Видалити замовлення"
+                        >
+                          <FiTrash2 size={11} /> видалити замовлення
+                        </button>
+                      )}
                     </div>
                   </div>
                   {order.items?.length > 0 && (
@@ -916,6 +942,9 @@ const ENTITY_LABELS = {
   product: 'товар',
   order: 'замовлення',
   user: 'користувач',
+  ttn: 'ТТН',
+  settings: 'налаштування',
+  audit_log: 'журнал',
 };
 
 const ACTION_COLORS = {
@@ -952,6 +981,28 @@ function AuditLogsPanel() {
     }
   }, [filter, actionFilter]);
 
+  const handleDeleteLog = async (id) => {
+    if (!confirm('Видалити цей запис журналу?')) return;
+    try {
+      await api.delete(`/auth/logs/${id}`);
+      toast.success('Запис видалено');
+      loadLogs(actionFilter ? 'all' : filter, actionFilter || '');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка видалення');
+    }
+  };
+
+  const handleClearLogs = async () => {
+    if (!confirm('Очистити весь журнал? Цю дію неможливо скасувати.')) return;
+    try {
+      const res = await api.delete('/auth/logs');
+      toast.success(`Очищено: ${res.data.deleted || 0} записів`);
+      loadLogs(actionFilter ? 'all' : filter, actionFilter || '');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка очищення');
+    }
+  };
+
   const filterClass = (val) => `px-3 py-1 rounded-full text-[10px] font-medium transition-all cursor-pointer ${
     filter === val
       ? 'bg-hit-yellow text-[#0a0e1a]'
@@ -960,13 +1011,23 @@ function AuditLogsPanel() {
 
   return (
     <div>
-      <div className="flex flex-wrap gap-1.5 mb-5">
-        {[['all', 'всі'], ['auth', 'вхід'], ['product', 'товари'], ['order', 'замовлення'], ['user', 'користувачі']].map(([val, label]) => (
-          <button key={val} onClick={() => { setActionFilter(''); setFilter(val); }} className={filterClass(!actionFilter && filter === val ? val : '')}>{label}</button>
-        ))}
-        <button onClick={() => setActionFilter(actionFilter === 'stock_change' ? '' : 'stock_change')} className={filterClass(actionFilter === 'stock_change' ? 'stock_change' : '')}>
-          склад
-        </button>
+      <div className="flex flex-wrap items-center justify-between gap-3 mb-5">
+        <div className="flex flex-wrap gap-1.5">
+          {[['all', 'всі'], ['auth', 'вхід'], ['product', 'товари'], ['order', 'замовлення'], ['ttn', 'ТТН'], ['user', 'користувачі']].map(([val, label]) => (
+            <button key={val} onClick={() => { setActionFilter(''); setFilter(val); }} className={filterClass(!actionFilter && filter === val ? val : '')}>{label}</button>
+          ))}
+          <button onClick={() => setActionFilter(actionFilter === 'stock_change' ? '' : 'stock_change')} className={filterClass(actionFilter === 'stock_change' ? 'stock_change' : '')}>
+            склад
+          </button>
+        </div>
+        {logs.length > 0 && (
+          <button
+            onClick={handleClearLogs}
+            className="text-[10px] text-red-500 hover:text-red-600 border border-red-200 dark:border-red-500/30 px-3 py-1 rounded-full transition-colors"
+          >
+            очистити журнал
+          </button>
+        )}
       </div>
 
       {loading ? (
@@ -991,13 +1052,20 @@ function AuditLogsPanel() {
                   <p className="text-gray-500 dark:text-white/50 text-xs truncate">{log.details}</p>
                 )}
               </div>
-              <div className="text-right flex-shrink-0">
+              <div className="text-right flex-shrink-0 flex flex-col items-end gap-1">
                 <p className="text-gray-400 dark:text-white/30 text-[10px]">
                   {new Date(log.createdAt).toLocaleDateString('uk-UA')}
                 </p>
                 <p className="text-gray-300 dark:text-white/20 text-[10px]">
                   {new Date(log.createdAt).toLocaleTimeString('uk-UA', { hour: '2-digit', minute: '2-digit' })}
                 </p>
+                <button
+                  onClick={() => handleDeleteLog(log.id)}
+                  className="w-6 h-6 rounded-md bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/30 hover:text-red-400 transition-colors"
+                  title="Видалити запис"
+                >
+                  <FiTrash2 size={11} />
+                </button>
               </div>
             </div>
           ))}

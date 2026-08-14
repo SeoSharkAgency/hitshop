@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/auth');
+const { logAction } = require('../auditLog');
 
 const NP_API_URL = 'https://api.novaposhta.ua/v2.0/json/';
 
@@ -328,6 +329,14 @@ router.post('/delete-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       const errMsg = result.errors?.join(', ') || 'Помилка видалення ТТН';
       return res.status(400).json({ error: errMsg });
     }
+
+    logAction(
+      req,
+      'delete',
+      'ttn',
+      null,
+      `Видалено ТТН ${ttnNumber || docRef}` + (req.body.orderId ? ` (замовлення #${req.body.orderId})` : '')
+    );
 
     res.json({ success: true });
   } catch (err) {

@@ -9,5 +9,6 @@ router.get('/track/:orderNumber', orderController.getByOrderNumber);
 router.get('/', authMiddleware, orderController.getAll);
 router.get('/:id', authMiddleware, orderController.getById);
 router.put('/:id', authMiddleware, requireRole('admin', 'accountant'), orderController.updateStatus);
+router.delete('/:id', authMiddleware, requireRole('admin'), orderController.remove);
 
 module.exports = router;

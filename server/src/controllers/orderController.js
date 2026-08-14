@@ -222,3 +222,60 @@ exports.updateStatus = async (req, res) => {
     res.status(500).json({ error: 'Помилка оновлення' });
   }
 };
+
+exports.remove = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const order = await Order.findByPk(req.params.id, {
+      include: [{ model: OrderItem, as: 'items' }],
+      transaction: t,
+      lock: true,
+    });
+    if (!order) {
+      await t.rollback();
+      return res.status(404).json({ error: 'Замовлення не знайдено' });
+    }
+
+    const orderNumber = order.orderNumber;
+    const ttnNumber = order.ttnNumber;
+    const itemSummary = (order.items || [])
+      .map((i) => `${i.productId}${i.size ? `(${i.size})` : ''}×${i.quantity}`)
+      .join(', ');
+
+    for (const item of order.items || []) {
+      const product = await Product.findByPk(item.productId, { lock: true, transaction: t });
+      if (!product) continue;
+
+      const sizes = product.sizes || {};
+      const hasSizes = Object.keys(sizes).length > 0;
+
+      if (hasSizes && item.size && sizes[item.size] !== undefined) {
+        const updatedSizes = { ...sizes, [item.size]: sizes[item.size] + item.quantity };
+        const newStock = Object.values(updatedSizes).reduce((sum, qty) => sum + qty, 0);
+        await product.update({ sizes: updatedSizes, stock: newStock }, { transaction: t });
+      } else {
+        await product.update({ stock: product.stock + item.quantity }, { transaction: t });
+      }
+    }
+
+    await OrderItem.destroy({ where: { orderId: order.id }, transaction: t });
+    await order.destroy({ transaction: t });
+    await t.commit();
+
+    logAction(
+      req,
+      'delete',
+      'order',
+      parseInt(req.params.id, 10),
+      `Видалено замовлення ${orderNumber}` +
+        (ttnNumber ? `, ТТН ${ttnNumber}` : '') +
+        (itemSummary ? `; позиції: ${itemSummary}` : '')
+    );
+
+    res.json({ success: true, orderNumber });
+  } catch (err) {
+    await t.rollback();
+    console.error('Order delete error:', err.message);
+    res.status(500).json({ error: 'Помилка видалення замовлення' });
+  }
+};
