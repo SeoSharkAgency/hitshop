@@ -31,7 +31,9 @@ function getOrderTrackingUrl(orderNumber) {
 
 function notifyNewOrder(order) {
   const items = order.items?.map(i =>
-    `  • ${i.Product?.name || 'товар'} ${i.size ? `(${i.size})` : ''} × ${i.quantity}`
+    `  • ${i.Product?.name || 'товар'} ${i.size ? `(${i.size})` : ''}` +
+    `${i.printNumber ? ` №${i.printNumber}` : ''}` +
+    `${i.printName ? ` «${i.printName}»` : ''} × ${i.quantity}`
   ).join('\n') || '';
 
   const trackingUrl = getOrderTrackingUrl(order.orderNumber);

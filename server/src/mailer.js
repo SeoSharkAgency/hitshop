@@ -20,7 +20,7 @@ async function sendOrderConfirmation(order, items) {
 
   const itemsHtml = items.map(item =>
     `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.Product?.name || 'Товар'} ${item.size ? `(${item.size})` : ''}</td>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.Product?.name || 'Товар'} ${item.size ? `(${item.size})` : ''}${item.printNumber ? ` №${item.printNumber}` : ''}${item.printName ? ` «${item.printName}»` : ''}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${(item.price * item.quantity).toLocaleString('uk-UA')} ₴</td>
     </tr>`

@@ -1,4 +1,4 @@
-import { createContext, useContext, useReducer, useEffect } from 'react';
+import { createContext, useContext, useReducer } from 'react';
 
 const CartContext = createContext();
 
@@ -6,17 +6,28 @@ const initialState = {
   items: JSON.parse(localStorage.getItem('cart') || '[]'),
 };
 
+export function cartItemKey(item) {
+  return [
+    item.id,
+    item.size || '',
+    item.printNumber || '',
+    item.printName || '',
+  ].join('|');
+}
+
+function sameCartItem(a, b) {
+  return cartItemKey(a) === cartItemKey(b);
+}
+
 function cartReducer(state, action) {
   let newItems;
 
   switch (action.type) {
     case 'ADD_ITEM': {
-      const existing = state.items.find(
-        (item) => item.id === action.payload.id && item.size === action.payload.size
-      );
+      const existing = state.items.find((item) => sameCartItem(item, action.payload));
       if (existing) {
         newItems = state.items.map((item) =>
-          item.id === action.payload.id && item.size === action.payload.size
+          sameCartItem(item, action.payload)
             ? { ...item, quantity: item.quantity + 1 }
             : item
         );
@@ -26,13 +37,11 @@ function cartReducer(state, action) {
       break;
     }
     case 'REMOVE_ITEM':
-      newItems = state.items.filter(
-        (item) => !(item.id === action.payload.id && item.size === action.payload.size)
-      );
+      newItems = state.items.filter((item) => !sameCartItem(item, action.payload));
       break;
     case 'UPDATE_QUANTITY':
       newItems = state.items.map((item) =>
-        item.id === action.payload.id && item.size === action.payload.size
+        sameCartItem(item, action.payload)
           ? { ...item, quantity: action.payload.quantity }
           : item
       );
@@ -51,20 +60,30 @@ function cartReducer(state, action) {
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
 
-  const addItem = (product, size) => {
-    dispatch({ type: 'ADD_ITEM', payload: { ...product, size } });
+  const addItem = (product, size, extras = {}) => {
+    dispatch({
+      type: 'ADD_ITEM',
+      payload: {
+        ...product,
+        size,
+        printNumber: extras.printNumber || '',
+        printName: extras.printName || '',
+        printNumberEnabled: !!extras.printNumberEnabled,
+        printNameEnabled: !!extras.printNameEnabled,
+      },
+    });
   };
 
-  const removeItem = (id, size) => {
-    dispatch({ type: 'REMOVE_ITEM', payload: { id, size } });
+  const removeItem = (item) => {
+    dispatch({ type: 'REMOVE_ITEM', payload: item });
   };
 
-  const updateQuantity = (id, size, quantity) => {
+  const updateQuantity = (item, quantity) => {
     if (quantity <= 0) {
-      removeItem(id, size);
+      removeItem(item);
       return;
     }
-    dispatch({ type: 'UPDATE_QUANTITY', payload: { id, size, quantity } });
+    dispatch({ type: 'UPDATE_QUANTITY', payload: { ...item, quantity } });
   };
 
   const clearCart = () => {

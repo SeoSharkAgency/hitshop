@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom';
 import { FiTrash2, FiMinus, FiPlus } from 'react-icons/fi';
-import { useCart } from '../context/CartContext';
+import { useCart, cartItemKey } from '../context/CartContext';
 import { getImageUrl } from '../api';
 
 export default function Cart() {
@@ -24,7 +24,7 @@ export default function Cart() {
       <div className="space-y-3">
         {items.map((item) => (
           <div
-            key={`${item.id}-${item.size}`}
+            key={cartItemKey(item)}
             className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4 flex items-center gap-3"
           >
             <div className="w-14 h-14 bg-gray-100 dark:bg-white/5 rounded-xl overflow-hidden flex-shrink-0 flex items-center justify-center">
@@ -37,8 +37,10 @@ export default function Cart() {
 
             <div className="flex-1 min-w-0">
               <h3 className="text-gray-900 dark:text-white text-sm font-medium truncate">{item.name}</h3>
-              <div className="flex items-center gap-2 mt-0.5">
+              <div className="flex flex-wrap items-center gap-2 mt-0.5">
                 {item.size && <span className="text-gray-400 dark:text-white/40 text-xs">{item.size}</span>}
+                {item.printNumber && <span className="text-gray-400 dark:text-white/40 text-xs">№{item.printNumber}</span>}
+                {item.printName && <span className="text-gray-400 dark:text-white/40 text-xs uppercase">{item.printName}</span>}
                 <span className="text-hit-blue dark:text-hit-yellow text-xs font-semibold">
                   {Number(item.price).toLocaleString()} ₴
                 </span>
@@ -47,14 +49,14 @@ export default function Cart() {
 
             <div className="flex items-center gap-1">
               <button
-                onClick={() => updateQuantity(item.id, item.size, item.quantity - 1)}
+                onClick={() => updateQuantity(item, item.quantity - 1)}
                 className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-all"
               >
                 <FiMinus size={11} />
               </button>
               <span className="w-6 text-center text-gray-900 dark:text-white text-xs font-medium">{item.quantity}</span>
               <button
-                onClick={() => updateQuantity(item.id, item.size, item.quantity + 1)}
+                onClick={() => updateQuantity(item, item.quantity + 1)}
                 className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 flex items-center justify-center text-gray-400 dark:text-white/50 hover:text-gray-900 dark:hover:text-white transition-all"
               >
                 <FiPlus size={11} />
@@ -62,7 +64,7 @@ export default function Cart() {
             </div>
 
             <button
-              onClick={() => removeItem(item.id, item.size)}
+              onClick={() => removeItem(item)}
               className="p-1.5 text-gray-300 dark:text-white/30 hover:text-red-400 transition-colors"
             >
               <FiTrash2 size={14} />

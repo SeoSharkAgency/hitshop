@@ -143,7 +143,12 @@ export default function OrderStatus() {
               <div className="flex-1 min-w-0">
                 <p className="text-gray-900 dark:text-white text-sm truncate">{item.Product?.name || 'Товар'}</p>
                 <p className="text-gray-400 dark:text-white/40 text-xs">
-                  {item.size && `${item.size} • `}{item.quantity} шт × {Number(item.price).toLocaleString()} ₴
+                  {[
+                    item.size,
+                    item.printNumber ? `№${item.printNumber}` : null,
+                    item.printName ? String(item.printName).toUpperCase() : null,
+                    `${item.quantity} шт × ${Number(item.price).toLocaleString()} ₴`,
+                  ].filter(Boolean).join(' • ')}
                 </p>
               </div>
               <span className="text-gray-900 dark:text-white text-sm font-medium flex-shrink-0">

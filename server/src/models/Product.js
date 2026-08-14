@@ -53,6 +53,18 @@ const Product = sequelize.define('Product', {
     allowNull: true,
     defaultValue: null,
   },
+  printNumberEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'print_number_enabled',
+  },
+  printNameEnabled: {
+    type: DataTypes.BOOLEAN,
+    allowNull: false,
+    defaultValue: false,
+    field: 'print_name_enabled',
+  },
 }, {
   tableName: 'products',
   timestamps: true,

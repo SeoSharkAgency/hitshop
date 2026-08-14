@@ -26,6 +26,16 @@ const OrderItem = sequelize.define('OrderItem', {
     type: DataTypes.STRING,
     allowNull: true,
   },
+  printNumber: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'print_number',
+  },
+  printName: {
+    type: DataTypes.STRING,
+    allowNull: true,
+    field: 'print_name',
+  },
   price: {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,

@@ -174,7 +174,11 @@ export default function Checkout() {
     setLoading(true);
     try {
       const orderItems = items.map((item) => ({
-        productId: item.id, quantity: item.quantity, size: item.size,
+        productId: item.id,
+        quantity: item.quantity,
+        size: item.size,
+        printNumber: item.printNumber || null,
+        printName: item.printName || null,
       }));
       const orderData = {
         customerName: form.customerName.trim(),
@@ -284,7 +288,7 @@ export default function Checkout() {
             {items.map((item) => (
               <div key={`${item.id}-${item.size}`} className="flex justify-between text-xs">
                 <span className="text-hit-muted dark:text-hit-cream/50 truncate mr-3">
-                  {item.name} {item.size && `• ${item.size}`} × {item.quantity}
+                  {item.name} {item.size && `• ${item.size}`}{item.printNumber && ` • №${item.printNumber}`}{item.printName && ` • ${item.printName}`} × {item.quantity}
                 </span>
                 <span className="text-hit-ink dark:text-hit-cream flex-shrink-0">{(item.price * item.quantity).toLocaleString()} ₴</span>
               </div>

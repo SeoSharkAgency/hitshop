@@ -373,7 +373,10 @@ export default function AdminDashboard() {
                     <div className="mb-3 space-y-0.5">
                       {order.items.map((item, i) => (
                         <p key={i} className="text-gray-400 dark:text-white/40 text-xs">
-                          {item.Product?.name} {item.size && `(${item.size})`} × {item.quantity}
+                          {item.Product?.name} {item.size && `(${item.size})`}
+                          {item.printNumber && ` №${item.printNumber}`}
+                          {item.printName && ` «${item.printName}»`}
+                          {' '}× {item.quantity}
                         </p>
                       ))}
                     </div>
@@ -1087,6 +1090,8 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     name: product?.name || '', description: product?.description || '',
     price: product?.price || '', categoryId: product?.categoryId || product?.category_id || '',
     featured: product?.featured || false,
+    printNumberEnabled: product?.printNumberEnabled || false,
+    printNameEnabled: product?.printNameEnabled || false,
   });
   const [charRows, setCharRows] = useState(() => {
     const chars = product?.characteristics;
@@ -1144,6 +1149,8 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     formData.append('price', form.price);
     formData.append('categoryId', form.categoryId);
     formData.append('featured', form.featured);
+    formData.append('printNumberEnabled', form.printNumberEnabled);
+    formData.append('printNameEnabled', form.printNameEnabled);
 
     if (charRows.length > 0) {
       const charsObj = {};
@@ -1285,9 +1292,17 @@ function ProductForm({ product, categories, onClose, onSaved }) {
         </div>
 
         <div><input type="file" accept="image/*" onChange={(e) => setImage(e.target.files[0])} className="text-xs text-gray-400 file:mr-3 file:py-1.5 file:px-3 file:rounded-full file:border-0 file:bg-hit-yellow file:text-[#0a0e1a] file:text-xs file:font-medium file:cursor-pointer" /></div>
-        <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
-          <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} className="w-3.5 h-3.5 rounded" /> популярний
-        </label>
+        <div className="space-y-2">
+          <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
+            <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} className="w-3.5 h-3.5 rounded" /> популярний
+          </label>
+          <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
+            <input type="checkbox" checked={form.printNumberEnabled} onChange={(e) => setForm({ ...form, printNumberEnabled: e.target.checked })} className="w-3.5 h-3.5 rounded" /> набивка номеру
+          </label>
+          <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
+            <input type="checkbox" checked={form.printNameEnabled} onChange={(e) => setForm({ ...form, printNameEnabled: e.target.checked })} className="w-3.5 h-3.5 rounded" /> набивка тексту
+          </label>
+        </div>
         <div className="md:col-span-2 flex gap-2 mt-1">
           <button type="submit" disabled={loading} className="btn-primary text-xs disabled:opacity-50">{loading ? '...' : product ? 'зберегти' : 'додати'}</button>
           <button type="button" onClick={onClose} className="btn-secondary text-xs">скасувати</button>

@@ -75,6 +75,21 @@ exports.create = async (req, res) => {
         }
       }
 
+      if (product.printNumberEnabled) {
+        const num = String(item.printNumber || '').trim();
+        if (!num) {
+          await t.rollback();
+          return res.status(400).json({ error: `"${product.name}" — вкажіть номер набивки` });
+        }
+      }
+      if (product.printNameEnabled) {
+        const namePrint = String(item.printName || '').trim();
+        if (!namePrint) {
+          await t.rollback();
+          return res.status(400).json({ error: `"${product.name}" — вкажіть текст для набивки` });
+        }
+      }
+
       total += parseFloat(product.price) * item.quantity;
     }
 
@@ -103,6 +118,8 @@ exports.create = async (req, res) => {
         productId: item.productId,
         quantity: item.quantity,
         size: item.size ? String(item.size).slice(0, 10) : null,
+        printNumber: item.printNumber ? String(item.printNumber).trim().slice(0, 10) : null,
+        printName: item.printName ? String(item.printName).trim().slice(0, 40) : null,
         price: product.price,
       }, { transaction: t });
 

@@ -37,7 +37,7 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart } = req.body;
+    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart, printNumberEnabled, printNameEnabled } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     let parsedSizes = {};
@@ -75,6 +75,8 @@ exports.create = async (req, res) => {
       image,
       characteristics: parsedCharacteristics,
       sizeChart: parsedSizeChart,
+      printNumberEnabled: printNumberEnabled === 'true' || printNumberEnabled === true,
+      printNameEnabled: printNameEnabled === 'true' || printNameEnabled === true,
     });
 
     const full = await Product.findByPk(product.id, {
@@ -95,7 +97,7 @@ exports.update = async (req, res) => {
     const oldSizes = product.sizes || {};
     const oldStock = product.stock;
 
-    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart } = req.body;
+    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart, printNumberEnabled, printNameEnabled } = req.body;
     const updateData = {};
 
     if (name) updateData.name = name;
@@ -122,6 +124,12 @@ exports.update = async (req, res) => {
       updateData.stock = parseInt(stock);
     }
     if (featured !== undefined) updateData.featured = featured === 'true' || featured === true;
+    if (printNumberEnabled !== undefined) {
+      updateData.printNumberEnabled = printNumberEnabled === 'true' || printNumberEnabled === true;
+    }
+    if (printNameEnabled !== undefined) {
+      updateData.printNameEnabled = printNameEnabled === 'true' || printNameEnabled === true;
+    }
     if (req.file) updateData.image = `/uploads/${req.file.filename}`;
 
     await product.update(updateData);
