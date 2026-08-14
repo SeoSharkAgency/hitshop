@@ -227,23 +227,30 @@ exports.remove = async (req, res) => {
   const t = await sequelize.transaction();
   try {
     const order = await Order.findByPk(req.params.id, {
-      include: [{ model: OrderItem, as: 'items' }],
       transaction: t,
-      lock: true,
+      lock: t.LOCK.UPDATE,
     });
     if (!order) {
       await t.rollback();
       return res.status(404).json({ error: 'Замовлення не знайдено' });
     }
 
+    const items = await OrderItem.findAll({
+      where: { orderId: order.id },
+      transaction: t,
+    });
+
     const orderNumber = order.orderNumber;
     const ttnNumber = order.ttnNumber;
-    const itemSummary = (order.items || [])
+    const itemSummary = items
       .map((i) => `${i.productId}${i.size ? `(${i.size})` : ''}×${i.quantity}`)
       .join(', ');
 
-    for (const item of order.items || []) {
-      const product = await Product.findByPk(item.productId, { lock: true, transaction: t });
+    for (const item of items) {
+      const product = await Product.findByPk(item.productId, {
+        transaction: t,
+        lock: t.LOCK.UPDATE,
+      });
       if (!product) continue;
 
       const sizes = product.sizes || {};
