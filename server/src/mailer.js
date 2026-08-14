@@ -1,27 +1,30 @@
 const nodemailer = require('nodemailer');
 const { getPaymentDetails } = require('./settings');
 
-const transporter = nodemailer.createTransport({
-  host: process.env.SMTP_HOST || 'smtp.gmail.com',
-  port: parseInt(process.env.SMTP_PORT) || 587,
-  secure: false,
-  connectionTimeout: 20000,
-  greetingTimeout: 20000,
-  socketTimeout: 30000,
-  auth: {
-    user: process.env.SMTP_USER,
-    pass: process.env.SMTP_PASS,
-  },
-});
+function getSmtpPort() {
+  return parseInt(process.env.SMTP_PORT, 10) || 587;
+}
 
-async function sendOrderConfirmation(order, items) {
-  if (!process.env.SMTP_USER || !order.customerEmail) return;
+function createSmtpTransport() {
+  const port = getSmtpPort();
+  const secure = process.env.SMTP_SECURE === 'true' || port === 465;
+  return nodemailer.createTransport({
+    host: process.env.SMTP_HOST || 'smtp.gmail.com',
+    port,
+    secure,
+    requireTLS: !secure && port === 587,
+    connectionTimeout: 20000,
+    greetingTimeout: 20000,
+    socketTimeout: 30000,
+    auth: {
+      user: process.env.SMTP_USER,
+      pass: process.env.SMTP_PASS,
+    },
+  });
+}
 
-  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
-  const orderUrl = `${clientUrl}/order/${order.orderNumber}`;
-  const payment = await getPaymentDetails();
-
-  const itemsHtml = items.map((item) => {
+function buildItemsHtml(items) {
+  return items.map((item) => {
     const name = item.Product?.name || item.product?.name || 'Товар';
     const size = item.size ? ` (${item.size})` : '';
     const printNumber = item.printNumber || item.print_number || '';
@@ -42,8 +45,10 @@ async function sendOrderConfirmation(order, items) {
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${(Number(item.price) * item.quantity).toLocaleString('uk-UA')} ₴</td>
     </tr>`;
   }).join('');
+}
 
-  const html = `
+function buildOrderHtml(order, items, payment, orderUrl) {
+  return `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
       <div style="text-align:center;margin-bottom:30px;">
         <h1 style="color:#1e3a5f;margin:0;">ФК «ХІТ» Київ</h1>
@@ -64,7 +69,7 @@ async function sendOrderConfirmation(order, items) {
           </tr>
         </thead>
         <tbody>
-          ${itemsHtml}
+          ${buildItemsHtml(items)}
         </tbody>
         <tfoot>
           <tr>
@@ -94,22 +99,126 @@ async function sendOrderConfirmation(order, items) {
       </p>
     </div>
   `;
+}
+
+function getFromAddress() {
+  return process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@hitkyiv.store';
+}
+
+async function sendViaBrevo({ to, subject, html }) {
+  const apiKey = process.env.BREVO_API_KEY;
+  if (!apiKey) return false;
+
+  const fromEmail = getFromAddress();
+  const fromName = process.env.SMTP_FROM_NAME || 'ФК Хіт Магазин';
+
+  const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+    method: 'POST',
+    headers: {
+      accept: 'application/json',
+      'content-type': 'application/json',
+      'api-key': apiKey,
+    },
+    body: JSON.stringify({
+      sender: { name: fromName, email: fromEmail },
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+    }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Brevo ${res.status}: ${body}`);
+  }
+  return true;
+}
+
+async function sendViaResend({ to, subject, html }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) return false;
+
+  const from = process.env.SMTP_FROM
+    || (process.env.SMTP_USER ? `ФК Хіт Магазин <${process.env.SMTP_USER}>` : 'ФК Хіт Магазин <onboarding@resend.dev>');
+
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from, to: [to], subject, html }),
+  });
+
+  if (!res.ok) {
+    const body = await res.text();
+    throw new Error(`Resend ${res.status}: ${body}`);
+  }
+  return true;
+}
+
+async function sendViaSmtp({ to, subject, html }) {
+  if (!process.env.SMTP_USER || !process.env.SMTP_PASS) return false;
+
+  const transporter = createSmtpTransport();
+  await transporter.sendMail({
+    from: `"ФК Хіт Магазин" <${process.env.SMTP_USER}>`,
+    to,
+    subject,
+    html,
+  });
+  return true;
+}
+
+async function sendOrderConfirmation(order, items) {
+  if (!order.customerEmail) {
+    console.warn('Email skipped: no customerEmail');
+    return;
+  }
+
+  const hasTransport = !!(
+    process.env.BREVO_API_KEY
+    || process.env.RESEND_API_KEY
+    || (process.env.SMTP_USER && process.env.SMTP_PASS)
+  );
+  if (!hasTransport) {
+    console.warn('Email skipped: no BREVO_API_KEY / RESEND_API_KEY / SMTP credentials');
+    return;
+  }
+
+  const clientUrl = process.env.CLIENT_URL || 'http://localhost:5173';
+  const orderUrl = `${clientUrl}/order/${order.orderNumber}`;
+  const payment = await getPaymentDetails();
+  const html = buildOrderHtml(order, items, payment, orderUrl);
+  const subject = `Замовлення ${order.orderNumber} — ФК Хіт`;
+  const payload = { to: order.customerEmail, subject, html };
 
   try {
-    await transporter.sendMail({
-      from: `"ФК Хіт Магазин" <${process.env.SMTP_USER}>`,
-      to: order.customerEmail,
-      subject: `Замовлення ${order.orderNumber} — ФК Хіт`,
-      html,
-    });
-    console.log(`Email sent to ${order.customerEmail} for order ${order.orderNumber}`, {
-      items: items.map((i) => ({
-        name: i.Product?.name,
-        size: i.size,
-        printNumber: i.printNumber || i.print_number || null,
-        printName: i.printName || i.print_name || null,
-      })),
-    });
+    let sent = false;
+    let via = '';
+
+    // HTTPS APIs first — SMTP ports often blocked on VPS
+    if (process.env.BREVO_API_KEY) {
+      sent = await sendViaBrevo(payload);
+      via = 'brevo';
+    } else if (process.env.RESEND_API_KEY) {
+      sent = await sendViaResend(payload);
+      via = 'resend';
+    } else {
+      sent = await sendViaSmtp(payload);
+      via = `smtp:${process.env.SMTP_HOST || 'smtp.gmail.com'}:${getSmtpPort()}`;
+    }
+
+    if (sent) {
+      console.log(`Email sent via ${via} to ${order.customerEmail} for order ${order.orderNumber}`, {
+        items: items.map((i) => ({
+          name: i.Product?.name,
+          size: i.size,
+          printNumber: i.printNumber || i.print_number || null,
+          printName: i.printName || i.print_name || null,
+        })),
+      });
+    }
   } catch (err) {
     console.error('Email send error:', err.message);
   }
