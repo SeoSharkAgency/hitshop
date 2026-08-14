@@ -44,6 +44,9 @@ export default function Cart() {
                 <span className="text-hit-blue dark:text-hit-yellow text-xs font-semibold">
                   {Number(item.price).toLocaleString()} ₴
                 </span>
+                {(Number(item.printNumberPrice) > 0 || Number(item.printNamePrice) > 0) && (
+                  <span className="text-gray-400 dark:text-white/30 text-[10px]">з набивкою</span>
+                )}
               </div>
             </div>
 

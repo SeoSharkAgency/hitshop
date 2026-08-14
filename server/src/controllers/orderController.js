@@ -75,17 +75,24 @@ exports.create = async (req, res) => {
         }
       }
 
-      // Набивка опційна: клієнт сам обирає «Додати набивку» на фронті
-      if (!product.printNumberEnabled && item.printNumber) {
+      // Набивка опційна: клієнт обирає кожен тип окремо
+      const hasPrintNumber = !!(item.printNumber && String(item.printNumber).trim());
+      const hasPrintName = !!(item.printName && String(item.printName).trim());
+      if (!product.printNumberEnabled && hasPrintNumber) {
         await t.rollback();
         return res.status(400).json({ error: `"${product.name}" — набивка номера недоступна` });
       }
-      if (!product.printNameEnabled && item.printName) {
+      if (!product.printNameEnabled && hasPrintName) {
         await t.rollback();
         return res.status(400).json({ error: `"${product.name}" — набивка тексту недоступна` });
       }
 
-      total += parseFloat(product.price) * item.quantity;
+      let unitPrice = parseFloat(product.price) || 0;
+      if (hasPrintNumber) unitPrice += parseFloat(product.printNumberPrice) || 0;
+      if (hasPrintName) unitPrice += parseFloat(product.printNamePrice) || 0;
+      item._unitPrice = unitPrice;
+
+      total += unitPrice * item.quantity;
     }
 
     const orderNumber = 'HIT-' + Date.now().toString(36).toUpperCase();
@@ -115,7 +122,7 @@ exports.create = async (req, res) => {
         size: item.size ? String(item.size).slice(0, 10) : null,
         printNumber: item.printNumber ? String(item.printNumber).trim().slice(0, 10) : null,
         printName: item.printName ? String(item.printName).trim().slice(0, 40) : null,
-        price: product.price,
+        price: item._unitPrice,
       }, { transaction: t });
 
       const sizes = product.sizes || {};
@@ -147,8 +154,20 @@ exports.create = async (req, res) => {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],
     });
 
+    const emailItems = (fullOrder.items || []).map((i) => {
+      const plain = typeof i.get === 'function' ? i.get({ plain: true }) : i;
+      return {
+        ...plain,
+        printNumber: i.printNumber ?? plain.printNumber ?? null,
+        printName: i.printName ?? plain.printName ?? null,
+        Product: i.Product
+          ? (typeof i.Product.get === 'function' ? i.Product.get({ plain: true }) : i.Product)
+          : plain.Product || null,
+      };
+    });
+
     notifyNewOrder(fullOrder);
-    sendOrderConfirmation(fullOrder, fullOrder.items || []);
+    sendOrderConfirmation(fullOrder, emailItems);
 
     res.status(201).json(fullOrder);
   } catch (err) {

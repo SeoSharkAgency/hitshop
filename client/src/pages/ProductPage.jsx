@@ -10,7 +10,8 @@ export default function ProductPage() {
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedSize, setSelectedSize] = useState('');
-  const [wantPrint, setWantPrint] = useState(false);
+  const [wantPrintNumber, setWantPrintNumber] = useState(false);
+  const [wantPrintName, setWantPrintName] = useState(false);
   const [printNumber, setPrintNumber] = useState('');
   const [printName, setPrintName] = useState('');
   const [activeTab, setActiveTab] = useState('description');
@@ -62,6 +63,16 @@ export default function ProductPage() {
   const characteristics = product.characteristics || null;
   const sizeChart = product.sizeChart || null;
 
+  const basePrice = Number(product.price) || 0;
+  const printNumberPrice = Number(product.printNumberPrice) || 0;
+  const printNamePrice = Number(product.printNamePrice) || 0;
+  const usePrintNumber = wantPrintNumber && product.printNumberEnabled;
+  const usePrintName = wantPrintName && product.printNameEnabled;
+  const unitPrice =
+    basePrice +
+    (usePrintNumber ? printNumberPrice : 0) +
+    (usePrintName ? printNamePrice : 0);
+
   const handleAddToCart = () => {
     if (hasSizes && !selectedSize) {
       toast.error('Оберіть розмір');
@@ -71,23 +82,25 @@ export default function ProductPage() {
       toast.error('Цього розміру немає в наявності');
       return;
     }
-    if (wantPrint && product.printNumberEnabled && !String(printNumber).trim()) {
+    if (usePrintNumber && !String(printNumber).trim()) {
       toast.error('Вкажіть номер для набивки');
       return;
     }
-    if (wantPrint && product.printNameEnabled && !String(printName).trim()) {
+    if (usePrintName && !String(printName).trim()) {
       toast.error('Вкажіть текст для набивки');
       return;
     }
-    const withPrint = wantPrint && (product.printNumberEnabled || product.printNameEnabled);
     addItem(
-      { id: product.id, name: product.name, price: Number(product.price), image: product.image },
+      { id: product.id, name: product.name, price: unitPrice, image: product.image },
       selectedSize,
       {
-        printNumber: withPrint && product.printNumberEnabled ? String(printNumber).trim() : '',
-        printName: withPrint && product.printNameEnabled ? String(printName).trim() : '',
-        printNumberEnabled: !!(withPrint && product.printNumberEnabled),
-        printNameEnabled: !!(withPrint && product.printNameEnabled),
+        printNumber: usePrintNumber ? String(printNumber).trim() : '',
+        printName: usePrintName ? String(printName).trim() : '',
+        printNumberEnabled: usePrintNumber,
+        printNameEnabled: usePrintName,
+        basePrice,
+        printNumberPrice: usePrintNumber ? printNumberPrice : 0,
+        printNamePrice: usePrintName ? printNamePrice : 0,
       }
     );
     toast.success('Додано в кошик');
@@ -124,8 +137,15 @@ export default function ProductPage() {
           )}
           <h1 className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-cream leading-tight">{product.name}</h1>
           <p className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-gold mt-3">
-            {Number(product.price).toLocaleString('uk-UA')} ₴
+            {unitPrice.toLocaleString('uk-UA')} ₴
           </p>
+          {(usePrintNumber || usePrintName) && (
+            <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-1">
+              {basePrice.toLocaleString('uk-UA')} ₴
+              {usePrintNumber && printNumberPrice > 0 && ` + набивка номера ${printNumberPrice.toLocaleString('uk-UA')} ₴`}
+              {usePrintName && printNamePrice > 0 && ` + набивка тексту ${printNamePrice.toLocaleString('uk-UA')} ₴`}
+            </p>
+          )}
 
           {hasSizes && (
             <div className="mt-6">
@@ -159,49 +179,68 @@ export default function ProductPage() {
           )}
 
           {(product.printNumberEnabled || product.printNameEnabled) && (
-            <div className="mt-6 space-y-3">
-              <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
-                <input
-                  type="checkbox"
-                  checked={wantPrint}
-                  onChange={(e) => {
-                    const on = e.target.checked;
-                    setWantPrint(on);
-                    if (!on) {
-                      setPrintNumber('');
-                      setPrintName('');
-                    }
-                  }}
-                  className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-hit-gold focus:ring-hit-gold/40"
-                />
-                <span className="text-hit-ink dark:text-hit-cream text-sm font-medium">Додати набивку</span>
-              </label>
-              {wantPrint && (
-                <div className="space-y-3 pl-0.5">
-                  {product.printNumberEnabled && (
-                    <div>
-                      <label className="block text-hit-muted dark:text-hit-cream/40 text-[11px] mb-1">Номер</label>
-                      <input
-                        type="text"
-                        inputMode="numeric"
-                        value={printNumber}
-                        onChange={(e) => setPrintNumber(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
-                        className="w-full max-w-[140px] bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-hit-ink dark:text-hit-cream text-sm focus:border-hit-gold focus:outline-none"
-                        placeholder="напр. 10"
-                      />
-                    </div>
+            <div className="mt-6 space-y-4">
+              <p className="text-hit-muted dark:text-hit-cream/50 text-xs uppercase tracking-wider font-medium">Набивка</p>
+              {product.printNumberEnabled && (
+                <div className="space-y-2">
+                  <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={wantPrintNumber}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setWantPrintNumber(on);
+                        if (!on) setPrintNumber('');
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-hit-gold focus:ring-hit-gold/40"
+                    />
+                    <span className="text-hit-ink dark:text-hit-cream text-sm font-medium">
+                      Набивка номера
+                      {printNumberPrice > 0 && (
+                        <span className="text-hit-muted dark:text-hit-cream/40 font-normal"> (+{printNumberPrice.toLocaleString('uk-UA')} ₴)</span>
+                      )}
+                    </span>
+                  </label>
+                  {wantPrintNumber && (
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={printNumber}
+                      onChange={(e) => setPrintNumber(e.target.value.replace(/[^\d]/g, '').slice(0, 3))}
+                      className="w-full max-w-[140px] bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-hit-ink dark:text-hit-cream text-sm focus:border-hit-gold focus:outline-none"
+                      placeholder="напр. 10"
+                    />
                   )}
-                  {product.printNameEnabled && (
-                    <div>
-                      <label className="block text-hit-muted dark:text-hit-cream/40 text-[11px] mb-1">Текст</label>
-                      <input
-                        type="text"
-                        value={printName}
-                        onChange={(e) => setPrintName(e.target.value.slice(0, 20))}
-                        className="w-full max-w-xs bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-hit-ink dark:text-hit-cream text-sm focus:border-hit-gold focus:outline-none uppercase"
-                        placeholder="текст набивки"
-                      />
-                    </div>
+                </div>
+              )}
+              {product.printNameEnabled && (
+                <div className="space-y-2">
+                  <label className="inline-flex items-center gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={wantPrintName}
+                      onChange={(e) => {
+                        const on = e.target.checked;
+                        setWantPrintName(on);
+                        if (!on) setPrintName('');
+                      }}
+                      className="w-4 h-4 rounded border-gray-300 dark:border-white/20 text-hit-gold focus:ring-hit-gold/40"
+                    />
+                    <span className="text-hit-ink dark:text-hit-cream text-sm font-medium">
+                      Набивка тексту
+                      {printNamePrice > 0 && (
+                        <span className="text-hit-muted dark:text-hit-cream/40 font-normal"> (+{printNamePrice.toLocaleString('uk-UA')} ₴)</span>
+                      )}
+                    </span>
+                  </label>
+                  {wantPrintName && (
+                    <input
+                      type="text"
+                      value={printName}
+                      onChange={(e) => setPrintName(e.target.value.slice(0, 20))}
+                      className="w-full max-w-xs bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-hit-ink dark:text-hit-cream text-sm focus:border-hit-gold focus:outline-none uppercase"
+                      placeholder="текст набивки"
+                    />
                   )}
                 </div>
               )}

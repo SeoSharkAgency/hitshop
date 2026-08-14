@@ -5,6 +5,9 @@ const transporter = nodemailer.createTransport({
   host: process.env.SMTP_HOST || 'smtp.gmail.com',
   port: parseInt(process.env.SMTP_PORT) || 587,
   secure: false,
+  connectionTimeout: 20000,
+  greetingTimeout: 20000,
+  socketTimeout: 30000,
   auth: {
     user: process.env.SMTP_USER,
     pass: process.env.SMTP_PASS,
@@ -18,13 +21,27 @@ async function sendOrderConfirmation(order, items) {
   const orderUrl = `${clientUrl}/order/${order.orderNumber}`;
   const payment = await getPaymentDetails();
 
-  const itemsHtml = items.map(item =>
-    `<tr>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;">${item.Product?.name || 'Товар'} ${item.size ? `(${item.size})` : ''}${item.printNumber ? ` №${item.printNumber}` : ''}${item.printName ? ` «${item.printName}»` : ''}</td>
+  const itemsHtml = items.map((item) => {
+    const name = item.Product?.name || item.product?.name || 'Товар';
+    const size = item.size ? ` (${item.size})` : '';
+    const printNumber = item.printNumber || item.print_number || '';
+    const printName = item.printName || item.print_name || '';
+    const printParts = [];
+    if (printNumber) printParts.push(`№${printNumber}`);
+    if (printName) printParts.push(`«${String(printName)}»`);
+    const printHtml = printParts.length
+      ? `<div style="margin-top:4px;color:#1e3a5f;font-size:13px;"><strong>Набивка:</strong> ${printParts.join(' ')}</div>`
+      : '';
+
+    return `<tr>
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;">
+        <div>${name}${size}</div>
+        ${printHtml}
+      </td>
       <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:center;">${item.quantity}</td>
-      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${(item.price * item.quantity).toLocaleString('uk-UA')} ₴</td>
-    </tr>`
-  ).join('');
+      <td style="padding:8px 12px;border-bottom:1px solid #eee;text-align:right;">${(Number(item.price) * item.quantity).toLocaleString('uk-UA')} ₴</td>
+    </tr>`;
+  }).join('');
 
   const html = `
     <div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;max-width:600px;margin:0 auto;padding:20px;">
@@ -85,7 +102,14 @@ async function sendOrderConfirmation(order, items) {
       subject: `Замовлення ${order.orderNumber} — ФК Хіт`,
       html,
     });
-    console.log(`Email sent to ${order.customerEmail} for order ${order.orderNumber}`);
+    console.log(`Email sent to ${order.customerEmail} for order ${order.orderNumber}`, {
+      items: items.map((i) => ({
+        name: i.Product?.name,
+        size: i.size,
+        printNumber: i.printNumber || i.print_number || null,
+        printName: i.printName || i.print_name || null,
+      })),
+    });
   } catch (err) {
     console.error('Email send error:', err.message);
   }

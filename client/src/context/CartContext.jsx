@@ -70,6 +70,9 @@ export function CartProvider({ children }) {
         printName: extras.printName || '',
         printNumberEnabled: !!extras.printNumberEnabled,
         printNameEnabled: !!extras.printNameEnabled,
+        basePrice: extras.basePrice ?? product.price,
+        printNumberPrice: extras.printNumberPrice || 0,
+        printNamePrice: extras.printNamePrice || 0,
       },
     });
   };

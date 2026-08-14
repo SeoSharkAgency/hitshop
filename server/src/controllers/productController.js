@@ -37,7 +37,10 @@ exports.getById = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart, printNumberEnabled, printNameEnabled } = req.body;
+    const {
+      name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart,
+      printNumberEnabled, printNameEnabled, printNumberPrice, printNamePrice,
+    } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
 
     let parsedSizes = {};
@@ -76,7 +79,9 @@ exports.create = async (req, res) => {
       characteristics: parsedCharacteristics,
       sizeChart: parsedSizeChart,
       printNumberEnabled: printNumberEnabled === 'true' || printNumberEnabled === true,
+      printNumberPrice: Math.max(0, parseFloat(printNumberPrice) || 0),
       printNameEnabled: printNameEnabled === 'true' || printNameEnabled === true,
+      printNamePrice: Math.max(0, parseFloat(printNamePrice) || 0),
     });
 
     const full = await Product.findByPk(product.id, {
@@ -97,7 +102,10 @@ exports.update = async (req, res) => {
     const oldSizes = product.sizes || {};
     const oldStock = product.stock;
 
-    const { name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart, printNumberEnabled, printNameEnabled } = req.body;
+    const {
+      name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart,
+      printNumberEnabled, printNameEnabled, printNumberPrice, printNamePrice,
+    } = req.body;
     const updateData = {};
 
     if (name) updateData.name = name;
@@ -127,8 +135,14 @@ exports.update = async (req, res) => {
     if (printNumberEnabled !== undefined) {
       updateData.printNumberEnabled = printNumberEnabled === 'true' || printNumberEnabled === true;
     }
+    if (printNumberPrice !== undefined) {
+      updateData.printNumberPrice = Math.max(0, parseFloat(printNumberPrice) || 0);
+    }
     if (printNameEnabled !== undefined) {
       updateData.printNameEnabled = printNameEnabled === 'true' || printNameEnabled === true;
+    }
+    if (printNamePrice !== undefined) {
+      updateData.printNamePrice = Math.max(0, parseFloat(printNamePrice) || 0);
     }
     if (req.file) updateData.image = `/uploads/${req.file.filename}`;
 

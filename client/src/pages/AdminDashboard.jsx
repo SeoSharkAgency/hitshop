@@ -1091,7 +1091,9 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     price: product?.price || '', categoryId: product?.categoryId || product?.category_id || '',
     featured: product?.featured || false,
     printNumberEnabled: product?.printNumberEnabled || false,
+    printNumberPrice: product?.printNumberPrice ?? '',
     printNameEnabled: product?.printNameEnabled || false,
+    printNamePrice: product?.printNamePrice ?? '',
   });
   const [charRows, setCharRows] = useState(() => {
     const chars = product?.characteristics;
@@ -1150,7 +1152,9 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     formData.append('categoryId', form.categoryId);
     formData.append('featured', form.featured);
     formData.append('printNumberEnabled', form.printNumberEnabled);
+    formData.append('printNumberPrice', form.printNumberPrice === '' ? 0 : form.printNumberPrice);
     formData.append('printNameEnabled', form.printNameEnabled);
+    formData.append('printNamePrice', form.printNamePrice === '' ? 0 : form.printNamePrice);
 
     if (charRows.length > 0) {
       const charsObj = {};
@@ -1296,12 +1300,38 @@ function ProductForm({ product, categories, onClose, onSaved }) {
           <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
             <input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} className="w-3.5 h-3.5 rounded" /> популярний
           </label>
-          <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
-            <input type="checkbox" checked={form.printNumberEnabled} onChange={(e) => setForm({ ...form, printNumberEnabled: e.target.checked })} className="w-3.5 h-3.5 rounded" /> набивка номеру
-          </label>
-          <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
-            <input type="checkbox" checked={form.printNameEnabled} onChange={(e) => setForm({ ...form, printNameEnabled: e.target.checked })} className="w-3.5 h-3.5 rounded" /> набивка тексту
-          </label>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
+              <input type="checkbox" checked={form.printNumberEnabled} onChange={(e) => setForm({ ...form, printNumberEnabled: e.target.checked })} className="w-3.5 h-3.5 rounded" /> набивка номеру
+            </label>
+            {form.printNumberEnabled && (
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.printNumberPrice}
+                onChange={(e) => setForm({ ...form, printNumberPrice: e.target.value })}
+                placeholder="ціна ₴"
+                className="w-24 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-gray-900 dark:text-white text-xs"
+              />
+            )}
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer">
+              <input type="checkbox" checked={form.printNameEnabled} onChange={(e) => setForm({ ...form, printNameEnabled: e.target.checked })} className="w-3.5 h-3.5 rounded" /> набивка тексту
+            </label>
+            {form.printNameEnabled && (
+              <input
+                type="number"
+                min="0"
+                step="1"
+                value={form.printNamePrice}
+                onChange={(e) => setForm({ ...form, printNamePrice: e.target.value })}
+                placeholder="ціна ₴"
+                className="w-24 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-gray-900 dark:text-white text-xs"
+              />
+            )}
+          </div>
         </div>
         <div className="md:col-span-2 flex gap-2 mt-1">
           <button type="submit" disabled={loading} className="btn-primary text-xs disabled:opacity-50">{loading ? '...' : product ? 'зберегти' : 'додати'}</button>
