@@ -31,7 +31,7 @@ export default function Home() {
                 ФК ХІТ<br />SHOP
               </h1>
               <p className="text-hit-cream/60 text-sm md:text-base mt-4 max-w-md mx-auto md:mx-0 leading-relaxed">
-                Ігрова форма сезону 2025/26, тренувальний одяг та клубна атрибутика. Одягни кольори чемпіонів.
+                Ігрова форма сезону 2026/2027, тренувальний одяг та клубна атрибутика. Одягни кольори чемпіонів.
               </p>
               <div className="flex flex-wrap gap-3 mt-8 justify-center md:justify-start">
                 <Link to="/catalog" className="btn-primary">Перейти в магазин →</Link>
