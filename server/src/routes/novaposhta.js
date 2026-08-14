@@ -118,6 +118,39 @@ router.get('/warehouses', async (req, res) => {
   }
 });
 
+router.get('/sender-default', auth, async (req, res) => {
+  try {
+    const cityRef = process.env.NP_SENDER_CITY_REF || null;
+    const warehouseRef = process.env.NP_SENDER_ADDRESS_REF || null;
+    let cityName = null;
+    let warehouseDescription = null;
+
+    if (warehouseRef) {
+      const wh = await npRequest('Address', 'getWarehouses', { Ref: warehouseRef });
+      if (wh.success && wh.data?.[0]) {
+        warehouseDescription = wh.data[0].Description;
+        cityName = wh.data[0].CityDescription || cityName;
+      }
+    }
+
+    if (cityRef && !cityName) {
+      const cities = await npRequest('Address', 'getCities', { Ref: cityRef });
+      if (cities.success && cities.data?.[0]) {
+        cityName = cities.data[0].Description;
+      }
+    }
+
+    res.json({
+      cityRef,
+      cityName,
+      warehouseRef,
+      warehouseDescription,
+    });
+  } catch (err) {
+    res.status(500).json({ error: 'Помилка завантаження адреси відправника' });
+  }
+});
+
 router.post('/price', async (req, res) => {
   try {
     const { citySender, cityRecipient, weight, cost, seatsAmount } = req.body;
@@ -162,10 +195,19 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       cost,
       description,
       seatsAmount,
+      senderCityRef,
+      senderWarehouseRef,
     } = req.body;
 
     if (!recipientCityRef || !recipientWarehouseRef || !recipientName || !recipientPhone) {
       return res.status(400).json({ error: 'Заповніть всі поля отримувача' });
+    }
+
+    const citySender = senderCityRef || process.env.NP_SENDER_CITY_REF;
+    const senderAddress = senderWarehouseRef || process.env.NP_SENDER_ADDRESS_REF;
+
+    if (!citySender || !senderAddress) {
+      return res.status(400).json({ error: 'Вкажіть місто та відділення відправлення' });
     }
 
     const cleanName = (str) => str.replace(/[^а-яА-ЯіІїЇєЄґҐa-zA-Z'\-\s]/g, '').trim();
@@ -202,9 +244,9 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
       SeatsAmount: String(seatsAmount || '1'),
       Description: description || 'Спортивна атрибутика ФК Хіт',
       Cost: String(cost || '500'),
-      CitySender: process.env.NP_SENDER_CITY_REF,
+      CitySender: citySender,
       Sender: process.env.NP_SENDER_REF,
-      SenderAddress: process.env.NP_SENDER_ADDRESS_REF,
+      SenderAddress: senderAddress,
       ContactSender: process.env.NP_SENDER_CONTACT_REF,
       SendersPhone: process.env.NP_SENDER_PHONE,
       CityRecipient: recipientCityRef,
@@ -220,11 +262,6 @@ router.post('/create-ttn', auth, requireRole('admin', 'warehouse'), async (req, 
     }
 
     const ttn = result.data?.[0];
-
-    if (ttn?.IntDocNumber) {
-      // Webhook subscription is not available in old NP API v2.0
-      // Status updates are handled by cron polling (see telegram.js)
-    }
 
     res.json({
       ttnNumber: ttn?.IntDocNumber || null,

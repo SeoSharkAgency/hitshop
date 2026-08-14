@@ -4,11 +4,14 @@ import { useState } from 'react';
 import { useCart } from '../context/CartContext';
 import { useTheme } from '../context/ThemeContext';
 import { useUser } from '../context/UserContext';
+import { useSiteSettings } from '../context/SiteSettingsContext';
+import SocialLinks from './SocialLinks';
 
 export default function Header() {
   const { totalItems } = useCart();
   const { dark, toggle } = useTheme();
   const { user } = useUser();
+  const { social } = useSiteSettings();
   const [menuOpen, setMenuOpen] = useState(false);
 
   return (
@@ -37,6 +40,7 @@ export default function Header() {
               </span>
             )}
           </Link>
+          <SocialLinks social={social} size={16} className="gap-2.5" />
           <button
             onClick={toggle}
             className="w-9 h-9 rounded-full bg-white/10 flex items-center justify-center text-hit-cream/60 hover:text-hit-gold transition-colors"
@@ -103,6 +107,7 @@ export default function Header() {
           <Link to={user ? '/account' : '/account/login'} onClick={() => setMenuOpen(false)} className="block text-hit-cream/70 hover:text-hit-cream text-sm py-2.5 font-medium">
             {user ? 'Мій кабінет' : 'Увійти'}
           </Link>
+          <SocialLinks social={social} className="pt-3 gap-4" size={18} />
         </div>
       )}
     </header>

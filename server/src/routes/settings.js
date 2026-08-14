@@ -1,7 +1,12 @@
 const express = require('express');
 const auth = require('../middleware/auth');
 const { requireRole } = require('../middleware/auth');
-const { getPaymentDetails, setPaymentDetails } = require('../settings');
+const {
+  getPaymentDetails,
+  setPaymentDetails,
+  getSocialLinks,
+  setSocialLinks,
+} = require('../settings');
 const { logAction } = require('../auditLog');
 
 const router = express.Router();
@@ -45,6 +50,28 @@ router.put('/payment', auth, requireRole('admin', 'accountant'), async (req, res
   } catch (err) {
     console.error('Update payment settings error:', err.message);
     res.status(500).json({ error: 'Помилка збереження реквізитів' });
+  }
+});
+
+router.get('/social', async (req, res) => {
+  try {
+    const social = await getSocialLinks();
+    res.json(social);
+  } catch (err) {
+    console.error('Get social settings error:', err.message);
+    res.status(500).json({ error: 'Помилка завантаження соцмереж' });
+  }
+});
+
+router.put('/social', auth, requireRole('admin'), async (req, res) => {
+  try {
+    const { instagram, telegram, facebook } = req.body;
+    const social = await setSocialLinks({ instagram, telegram, facebook });
+    logAction(req, 'update', 'settings', null, 'соцмережі оновлено');
+    res.json(social);
+  } catch (err) {
+    console.error('Update social settings error:', err.message);
+    res.status(500).json({ error: 'Помилка збереження соцмереж' });
   }
 });
 

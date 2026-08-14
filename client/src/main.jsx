@@ -6,19 +6,22 @@ import { CartProvider } from './context/CartContext';
 import { AuthProvider } from './context/AuthContext';
 import { UserProvider } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
+import { SiteSettingsProvider } from './context/SiteSettingsContext';
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <BrowserRouter>
       <ThemeProvider>
-        <AuthProvider>
-          <UserProvider>
-            <CartProvider>
-              <App />
-            </CartProvider>
-          </UserProvider>
-        </AuthProvider>
+        <SiteSettingsProvider>
+          <AuthProvider>
+            <UserProvider>
+              <CartProvider>
+                <App />
+              </CartProvider>
+            </UserProvider>
+          </AuthProvider>
+        </SiteSettingsProvider>
       </ThemeProvider>
     </BrowserRouter>
   </React.StrictMode>

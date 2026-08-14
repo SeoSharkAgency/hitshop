@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2, FiCreditCard } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
@@ -51,10 +51,103 @@ export default function AdminDashboard() {
   const [ttnModal, setTtnModal] = useState(null);
   const [ttnForm, setTtnForm] = useState({ weight: '0.5', description: 'Спортивна атрибутика ФК Хіт', seatsAmount: '1' });
   const [ttnLoading, setTtnLoading] = useState(false);
+  const [senderCityQuery, setSenderCityQuery] = useState('');
+  const [senderCities, setSenderCities] = useState([]);
+  const [senderCity, setSenderCity] = useState(null);
+  const [showSenderCities, setShowSenderCities] = useState(false);
+  const [senderWhQuery, setSenderWhQuery] = useState('');
+  const [senderWarehouses, setSenderWarehouses] = useState([]);
+  const [senderWarehouse, setSenderWarehouse] = useState(null);
+  const [showSenderWh, setShowSenderWh] = useState(false);
+  const senderCityRef = useRef(null);
+  const senderWhRef = useRef(null);
   const [manualTtn, setManualTtn] = useState({});
   const [trackingInfo, setTrackingInfo] = useState({});
 
+  const openTtnModal = async (order) => {
+    setTtnModal(order);
+    setTtnForm({ weight: '0.5', description: `Замовлення ${order.orderNumber}`, seatsAmount: '1' });
+    setSenderCities([]);
+    setSenderWarehouses([]);
+    setShowSenderCities(false);
+    setShowSenderWh(false);
+    try {
+      const res = await api.get('/novaposhta/sender-default');
+      const d = res.data || {};
+      if (d.cityRef) {
+        setSenderCity({ ref: d.cityRef, name: d.cityName || 'Місто відправлення' });
+        setSenderCityQuery(d.cityName || '');
+      } else {
+        setSenderCity(null);
+        setSenderCityQuery('');
+      }
+      if (d.warehouseRef) {
+        setSenderWarehouse({ ref: d.warehouseRef, description: d.warehouseDescription || 'Відділення' });
+        setSenderWhQuery(d.warehouseDescription || '');
+      } else {
+        setSenderWarehouse(null);
+        setSenderWhQuery('');
+      }
+    } catch {
+      setSenderCity(null);
+      setSenderCityQuery('');
+      setSenderWarehouse(null);
+      setSenderWhQuery('');
+    }
+  };
+
+  const searchSenderCities = useCallback(async (q) => {
+    if (q.length < 2) { setSenderCities([]); return; }
+    try {
+      const res = await api.get(`/novaposhta/cities?q=${encodeURIComponent(q)}`);
+      setSenderCities(res.data);
+    } catch { setSenderCities([]); }
+  }, []);
+
+  useEffect(() => {
+    if (!ttnModal) return;
+    const timer = setTimeout(() => {
+      if (senderCityQuery.length >= 2 && !senderCity) {
+        searchSenderCities(senderCityQuery);
+        setShowSenderCities(true);
+      }
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [senderCityQuery, senderCity, searchSenderCities, ttnModal]);
+
+  const searchSenderWarehouses = useCallback(async (cityRef, q) => {
+    if (!cityRef) return;
+    try {
+      const params = new URLSearchParams({ cityRef });
+      if (q) params.set('q', q);
+      const res = await api.get(`/novaposhta/warehouses?${params}`);
+      setSenderWarehouses(res.data);
+    } catch { setSenderWarehouses([]); }
+  }, []);
+
+  useEffect(() => {
+    if (!ttnModal || !senderCity) return;
+    const timer = setTimeout(() => {
+      searchSenderWarehouses(senderCity.ref, senderWhQuery);
+      if (!senderWarehouse) setShowSenderWh(true);
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [senderCity, senderWhQuery, searchSenderWarehouses, ttnModal, senderWarehouse]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (senderCityRef.current && !senderCityRef.current.contains(e.target)) setShowSenderCities(false);
+      if (senderWhRef.current && !senderWhRef.current.contains(e.target)) setShowSenderWh(false);
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const handleCreateTTN = async (order) => {
+    if (!senderCity || !senderWarehouse) {
+      toast.error('Оберіть місто та відділення відправлення');
+      return;
+    }
     setTtnLoading(true);
     try {
       const res = await api.post('/novaposhta/create-ttn', {
@@ -67,6 +160,8 @@ export default function AdminDashboard() {
         cost: String(order.total),
         description: ttnForm.description || `Замовлення ${order.orderNumber}`,
         seatsAmount: ttnForm.seatsAmount || '1',
+        senderCityRef: senderCity.ref,
+        senderWarehouseRef: senderWarehouse.ref,
       });
       if (res.data.ttnNumber) {
         await api.put(`/orders/${order.id}`, { ttnNumber: res.data.ttnNumber, status: 'shipped' });
@@ -112,8 +207,7 @@ export default function AdminDashboard() {
     setTrackingInfo((prev) => { const copy = { ...prev }; delete copy[order.id]; return copy; });
     loadOrders();
     const updatedOrder = { ...order, ttnNumber: null };
-    setTtnModal(updatedOrder);
-    setTtnForm({ weight: '0.5', description: `Замовлення ${order.orderNumber}`, seatsAmount: '1' });
+    openTtnModal(updatedOrder);
   };
 
   const handleTrackTTN = async (ttn, orderId) => {
@@ -162,7 +256,7 @@ export default function AdminDashboard() {
         )}
         {canPayment && (
           <button onClick={() => setTab('payment')} className={pillClass(tab === 'payment')}>
-            <FiCreditCard size={13} /> реквізити
+            <FiCreditCard size={13} /> налаштування
           </button>
         )}
         {canUsers && (
@@ -314,7 +408,7 @@ export default function AdminDashboard() {
                     ) : order.deliveryCityRef && order.deliveryWarehouseRef ? (
                       <div className="space-y-2">
                         <button
-                          onClick={() => { setTtnModal(order); setTtnForm({ weight: '0.5', description: `Замовлення ${order.orderNumber}`, seatsAmount: '1' }); }}
+                          onClick={() => openTtnModal(order)}
                           className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
                         >
                           📦 Створити ТТН через НП
@@ -348,17 +442,89 @@ export default function AdminDashboard() {
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
       {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
-      {tab === 'payment' && canPayment && <PaymentSettingsPanel />}
+      {tab === 'payment' && canPayment && (
+        <div className="space-y-6">
+          <PaymentSettingsPanel />
+          {canUsers && <SocialSettingsPanel />}
+        </div>
+      )}
 
       {/* TTN creation modal */}
       {ttnModal && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setTtnModal(null)}>
-          <div className="bg-white dark:bg-hit-blue border border-gray-200 dark:border-white/10 rounded-2xl p-6 max-w-md w-full" onClick={(e) => e.stopPropagation()}>
+          <div className="bg-white dark:bg-hit-blue border border-gray-200 dark:border-white/10 rounded-2xl p-6 max-w-md w-full max-h-[90vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             <h3 className="font-heading font-bold text-gray-900 dark:text-white text-sm mb-1">Створити ТТН</h3>
             <p className="text-gray-400 dark:text-white/40 text-xs mb-4">
               {ttnModal.orderNumber} — {ttnModal.customerName} • {ttnModal.deliveryAddress}
             </p>
             <div className="space-y-3">
+              <div>
+                <label className="text-gray-500 dark:text-white/50 text-[10px] uppercase tracking-wider mb-1 block">Місто відправлення</label>
+                <div className="relative" ref={senderCityRef}>
+                  <input
+                    type="text"
+                    value={senderCityQuery}
+                    onChange={(e) => { setSenderCityQuery(e.target.value); setSenderCity(null); setSenderWarehouse(null); setSenderWhQuery(''); }}
+                    onFocus={() => { if (senderCities.length > 0) setShowSenderCities(true); }}
+                    className="w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-hit-gold focus:outline-none"
+                    placeholder="Почніть вводити місто..."
+                  />
+                  {showSenderCities && senderCities.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-hit-blue border border-gray-200 dark:border-white/10 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                      {senderCities.map((city) => (
+                        <button
+                          key={city.ref}
+                          type="button"
+                          onClick={() => {
+                            setSenderCity(city);
+                            setSenderCityQuery(city.name);
+                            setShowSenderCities(false);
+                            setSenderWarehouse(null);
+                            setSenderWhQuery('');
+                            setSenderWarehouses([]);
+                            searchSenderWarehouses(city.ref, '');
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs text-gray-900 dark:text-white hover:bg-hit-gold/10"
+                        >
+                          {city.name}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div>
+                <label className="text-gray-500 dark:text-white/50 text-[10px] uppercase tracking-wider mb-1 block">Відділення відправлення</label>
+                <div className="relative" ref={senderWhRef}>
+                  <input
+                    type="text"
+                    value={senderWhQuery}
+                    onChange={(e) => { setSenderWhQuery(e.target.value); setSenderWarehouse(null); }}
+                    onFocus={() => { if (senderWarehouses.length > 0) setShowSenderWh(true); }}
+                    disabled={!senderCity}
+                    className={`w-full bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-2 text-sm text-gray-900 dark:text-white focus:border-hit-gold focus:outline-none ${!senderCity ? 'opacity-50' : ''}`}
+                    placeholder={senderCity ? 'Оберіть відділення...' : 'Спочатку оберіть місто'}
+                  />
+                  {showSenderWh && senderWarehouses.length > 0 && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-white dark:bg-hit-blue border border-gray-200 dark:border-white/10 rounded-xl shadow-lg max-h-40 overflow-y-auto">
+                      {senderWarehouses.map((wh) => (
+                        <button
+                          key={wh.ref}
+                          type="button"
+                          onClick={() => {
+                            setSenderWarehouse(wh);
+                            setSenderWhQuery(wh.description);
+                            setShowSenderWh(false);
+                          }}
+                          className="w-full text-left px-3 py-2 text-xs text-gray-900 dark:text-white hover:bg-hit-gold/10"
+                        >
+                          {wh.description}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
               <div>
                 <label className="text-gray-500 dark:text-white/50 text-[10px] uppercase tracking-wider mb-1 block">Вага (кг)</label>
                 <input type="text" value={ttnForm.weight} onChange={(e) => setTtnForm({ ...ttnForm, weight: e.target.value })}
@@ -468,6 +634,93 @@ function PaymentSettingsPanel() {
               required
               className={inputClass}
               placeholder="40713730"
+            />
+          </div>
+          <button type="submit" disabled={saving} className="btn-primary text-xs disabled:opacity-50 mt-2">
+            {saving ? 'Збереження...' : 'Зберегти'}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function SocialSettingsPanel() {
+  const [form, setForm] = useState({ instagram: '', telegram: '', facebook: '' });
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+
+  const inputClass = "w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-4 py-2.5 text-gray-900 dark:text-white text-sm placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none transition-all";
+
+  useEffect(() => {
+    api.get('/settings/social')
+      .then((res) => setForm({
+        instagram: res.data.instagram || '',
+        telegram: res.data.telegram || '',
+        facebook: res.data.facebook || '',
+      }))
+      .catch(() => toast.error('Не вдалося завантажити соцмережі'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await api.put('/settings/social', form);
+      setForm({
+        instagram: res.data.instagram || '',
+        telegram: res.data.telegram || '',
+        facebook: res.data.facebook || '',
+      });
+      toast.success('Соцмережі збережено');
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка збереження');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (loading) {
+    return <p className="text-gray-400 dark:text-white/40 text-sm">Завантаження...</p>;
+  }
+
+  return (
+    <div className="max-w-lg">
+      <div className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
+        <h2 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-1">Соцмережі</h2>
+        <p className="text-gray-400 dark:text-white/40 text-xs mb-5">
+          Посилання відображаються в хедері та футері сайту
+        </p>
+        <form onSubmit={handleSave} className="space-y-3">
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-white/40 mb-1">Instagram</label>
+            <input
+              type="url"
+              value={form.instagram}
+              onChange={(e) => setForm({ ...form, instagram: e.target.value })}
+              className={inputClass}
+              placeholder="https://www.instagram.com/..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-white/40 mb-1">Telegram</label>
+            <input
+              type="url"
+              value={form.telegram}
+              onChange={(e) => setForm({ ...form, telegram: e.target.value })}
+              className={inputClass}
+              placeholder="https://t.me/..."
+            />
+          </div>
+          <div>
+            <label className="block text-xs text-gray-500 dark:text-white/40 mb-1">Facebook</label>
+            <input
+              type="url"
+              value={form.facebook}
+              onChange={(e) => setForm({ ...form, facebook: e.target.value })}
+              className={inputClass}
+              placeholder="https://www.facebook.com/..."
             />
           </div>
           <button type="submit" disabled={saving} className="btn-primary text-xs disabled:opacity-50 mt-2">
