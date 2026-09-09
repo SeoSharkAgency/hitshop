@@ -34,7 +34,7 @@ export default function AdminDashboard() {
 
   const loadProducts = () => api.get('/products').then((r) => setProducts(r.data));
   const loadOrders = () => api.get('/orders').then((r) => setOrders(r.data));
-  const loadCategories = () => api.get('/categories').then((r) => setCategories(r.data));
+  const loadCategories = () => api.get('/categories?all=1').then((r) => setCategories(r.data));
   const loadUsers = () => api.get('/auth/users').then((r) => setUsers(r.data)).catch(() => {});
 
   const handleDeleteProduct = async (id) => {
