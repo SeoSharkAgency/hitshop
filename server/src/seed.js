@@ -19,6 +19,7 @@ async function seed() {
       { name: 'Аксесуари', slug: 'accessories' },
       { name: 'Шарфи та атрибутика', slug: 'scarves' },
       { name: 'Верхній одяг', slug: 'outerwear' },
+      { name: 'Повсякденне', slug: 'povsjakdenne' },
     ]);
     console.log('Categories created.');
 
