@@ -9,17 +9,18 @@ export function UserProvider({ children }) {
 
   useEffect(() => {
     const token = localStorage.getItem('userToken');
-    if (token) {
-      api.get('/user/me', { headers: { Authorization: `Bearer ${token}` } })
-        .then((res) => setUser(res.data))
-        .catch(() => {
-          localStorage.removeItem('userToken');
-          setUser(null);
-        })
-        .finally(() => setLoading(false));
-    } else {
+    if (!token) {
       setLoading(false);
+      return;
     }
+
+    api.get('/user/me')
+      .then((res) => setUser(res.data))
+      .catch(() => {
+        localStorage.removeItem('userToken');
+        setUser(null);
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const register = async (name, email, phone, password) => {
@@ -42,8 +43,7 @@ export function UserProvider({ children }) {
   };
 
   const updateProfile = async (data) => {
-    const token = localStorage.getItem('userToken');
-    const res = await api.put('/user/me', data, { headers: { Authorization: `Bearer ${token}` } });
+    const res = await api.put('/user/me', data);
     setUser(res.data);
     return res.data;
   };

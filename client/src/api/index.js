@@ -7,9 +7,18 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const headers = config.headers || {};
+  const existing = headers.Authorization || headers.authorization;
+  if (existing) return config;
+
+  const url = String(config.url || '');
+  const isUserRoute = url === '/user' || url.startsWith('/user/') || url.includes('/user/');
+  const token = isUserRoute
+    ? localStorage.getItem('userToken')
+    : localStorage.getItem('token');
+
   if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+    headers.Authorization = `Bearer ${token}`;
   }
   return config;
 });

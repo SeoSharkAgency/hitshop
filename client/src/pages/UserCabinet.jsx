@@ -39,8 +39,7 @@ export default function UserCabinet() {
   useEffect(() => {
     if (!user) return;
     setProfileForm({ name: user.name || '', phone: user.phone || '', deliveryCity: user.deliveryCity || '', deliveryWarehouse: user.deliveryWarehouse || '' });
-    const token = localStorage.getItem('userToken');
-    api.get('/user/orders', { headers: { Authorization: `Bearer ${token}` } })
+    api.get('/user/orders')
       .then((res) => setOrders(res.data))
       .catch(console.error)
       .finally(() => setLoadingOrders(false));
