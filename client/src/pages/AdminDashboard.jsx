@@ -784,6 +784,27 @@ function CustomersPanel({ customers, onReload }) {
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
 
+  const ORDER_STATUS = {
+    new: 'Нове',
+    processing: 'В обробці',
+    shipped: 'Відправлено',
+    delivered: 'Доставлено',
+    cancelled: 'Скасовано',
+  };
+  const PAYMENT_STATUS = {
+    pending: 'Очікує оплати',
+    paid: 'Оплачено',
+    failed: 'Помилка оплати',
+    refunded: 'Повернено',
+  };
+  const statusClass = {
+    new: 'bg-blue-100 text-blue-700 dark:bg-blue-500/20 dark:text-blue-300',
+    processing: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-300',
+    shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300',
+    delivered: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300',
+    cancelled: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
+  };
+
   const loadDetail = async (id) => {
     if (expandedId === id) {
       setExpandedId(null);
@@ -804,7 +825,8 @@ function CustomersPanel({ customers, onReload }) {
     }
   };
 
-  const handleDelete = async (id, name) => {
+  const handleDelete = async (e, id, name) => {
+    e.stopPropagation();
     if (!confirm(`Видалити клієнта «${name}»? Замовлення залишаться без прив'язки.`)) return;
     try {
       await api.delete(`/customers/${id}`);
@@ -819,6 +841,17 @@ function CustomersPanel({ customers, onReload }) {
     }
   };
 
+  const formatItemLine = (item) => {
+    const parts = [
+      item.Product?.name || 'Товар',
+      item.size || null,
+      item.printNumber ? `№${item.printNumber}` : null,
+      item.printName ? `«${item.printName}»` : null,
+      `×${item.quantity}`,
+    ].filter(Boolean);
+    return parts.join(' · ');
+  };
+
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
@@ -830,8 +863,19 @@ function CustomersPanel({ customers, onReload }) {
       ) : (
         <div className="space-y-2">
           {customers.map((c) => (
-            <div key={c.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3">
-              <div className="flex items-center gap-3">
+            <div
+              key={c.id}
+              className={`bg-gray-50 dark:bg-white/5 border rounded-xl p-3 transition-colors ${
+                expandedId === c.id
+                  ? 'border-hit-gold/40'
+                  : 'border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+              }`}
+            >
+              <button
+                type="button"
+                onClick={() => loadDetail(c.id)}
+                className="w-full flex items-center gap-3 text-left"
+              >
                 <div className="w-10 h-10 bg-hit-gold/15 rounded-full flex items-center justify-center shrink-0">
                   <span className="font-heading font-bold text-hit-gold text-sm">
                     {(c.name || '?').charAt(0).toUpperCase()}
@@ -856,46 +900,87 @@ function CustomersPanel({ customers, onReload }) {
                   <p className="text-gray-400 dark:text-white/30 text-[10px]">
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('uk-UA') : '—'}
                   </p>
+                  <p className="text-hit-blue dark:text-hit-yellow text-[10px] mt-0.5">
+                    {expandedId === c.id ? 'згорнути ▲' : 'замовлення ▼'}
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => loadDetail(c.id)}
-                  className="text-xs text-hit-blue dark:text-hit-yellow hover:underline shrink-0"
-                >
-                  {expandedId === c.id ? 'згорнути' : 'деталі'}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(c.id, c.name)}
+                <span
+                  role="button"
+                  tabIndex={0}
+                  onClick={(e) => handleDelete(e, c.id, c.name)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleDelete(e, c.id, c.name); }}
                   className="p-1.5 text-gray-300 dark:text-white/30 hover:text-red-400 transition-colors shrink-0"
                   title="Видалити"
                 >
                   <FiTrash2 size={14} />
-                </button>
-              </div>
+                </span>
+              </button>
 
               {expandedId === c.id && (
                 <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10">
                   {detailLoading ? (
                     <p className="text-gray-400 text-xs">Завантаження...</p>
                   ) : detail?.orders?.length ? (
-                    <div className="space-y-1.5">
-                      <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-1">Замовлення</p>
+                    <div className="space-y-3">
+                      <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider">
+                        Історія покупок ({detail.orders.length})
+                      </p>
                       {detail.orders.map((o) => (
-                        <div key={o.id} className="flex items-center justify-between text-xs gap-2">
-                          <span className="font-medium text-gray-900 dark:text-white">{o.orderNumber}</span>
-                          <span className="text-gray-400 dark:text-white/40">{o.status}</span>
-                          <span className="text-hit-blue dark:text-hit-yellow font-semibold">
-                            {Number(o.total).toLocaleString('uk-UA')} ₴
-                          </span>
-                          <span className="text-gray-400 dark:text-white/30">
-                            {o.createdAt ? new Date(o.createdAt).toLocaleDateString('uk-UA') : ''}
-                          </span>
+                        <div
+                          key={o.id}
+                          className="bg-white dark:bg-white/5 border border-gray-100 dark:border-white/10 rounded-xl p-3 space-y-2"
+                        >
+                          <div className="flex flex-wrap items-center gap-2 justify-between">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <a
+                                href={`/order/${o.orderNumber}`}
+                                target="_blank"
+                                rel="noreferrer"
+                                className="font-heading font-bold text-sm text-hit-blue dark:text-hit-yellow hover:underline"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                {o.orderNumber}
+                              </a>
+                              <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${statusClass[o.status] || 'bg-gray-100 text-gray-600'}`}>
+                                {ORDER_STATUS[o.status] || o.status}
+                              </span>
+                              <span className="text-[10px] text-gray-400 dark:text-white/40">
+                                {PAYMENT_STATUS[o.paymentStatus] || o.paymentStatus}
+                              </span>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-sm font-semibold text-gray-900 dark:text-white">
+                                {Number(o.total).toLocaleString('uk-UA')} ₴
+                              </p>
+                              <p className="text-[10px] text-gray-400 dark:text-white/30">
+                                {o.createdAt ? new Date(o.createdAt).toLocaleString('uk-UA') : ''}
+                              </p>
+                            </div>
+                          </div>
+                          {o.items?.length > 0 && (
+                            <ul className="space-y-1 border-t border-gray-50 dark:border-white/5 pt-2">
+                              {o.items.map((item) => (
+                                <li key={item.id} className="flex justify-between gap-3 text-xs">
+                                  <span className="text-gray-600 dark:text-white/60 truncate">
+                                    {formatItemLine(item)}
+                                  </span>
+                                  <span className="text-gray-900 dark:text-white shrink-0 font-medium">
+                                    {(Number(item.price) * item.quantity).toLocaleString('uk-UA')} ₴
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          )}
+                          {o.deliveryAddress && (
+                            <p className="text-[11px] text-gray-400 dark:text-white/30 truncate">
+                              📦 {o.deliveryAddress}
+                            </p>
+                          )}
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <p className="text-gray-400 dark:text-white/40 text-xs">Замовлень немає</p>
+                    <p className="text-gray-400 dark:text-white/40 text-xs">Замовлень ще немає</p>
                   )}
                 </div>
               )}

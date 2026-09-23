@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
 const authMiddleware = require('../middleware/auth');
 const { requireRole } = require('../middleware/auth');
-const { User, Order, sequelize } = require('../models');
+const { User, Order, OrderItem, Product, sequelize } = require('../models');
 const { logAction } = require('../auditLog');
 
 router.get('/', authMiddleware, requireRole('admin'), async (req, res) => {
@@ -12,7 +13,7 @@ router.get('/', authMiddleware, requireRole('admin'), async (req, res) => {
         exclude: ['passwordHash'],
         include: [
           [
-            sequelize.literal('(SELECT COUNT(*)::int FROM orders WHERE orders.user_id = "User".id)'),
+            sequelize.literal('(SELECT COUNT(*)::int FROM orders WHERE orders.user_id = "User".id OR (orders.customer_email IS NOT NULL AND lower(orders.customer_email) = lower("User".email)))'),
             'ordersCount',
           ],
         ],
@@ -34,14 +35,26 @@ router.get('/:id', authMiddleware, requireRole('admin'), async (req, res) => {
     if (!customer) return res.status(404).json({ error: 'Клієнта не знайдено' });
 
     const orders = await Order.findAll({
-      where: { userId: customer.id },
-      attributes: ['id', 'orderNumber', 'total', 'status', 'paymentStatus', 'createdAt'],
+      where: {
+        [Op.or]: [
+          { userId: customer.id },
+          ...(customer.email
+            ? [{ customerEmail: { [Op.iLike]: customer.email } }]
+            : []),
+        ],
+      },
+      include: [{
+        model: OrderItem,
+        as: 'items',
+        include: [{ model: Product, attributes: ['id', 'name', 'image'] }],
+      }],
       order: [['createdAt', 'DESC']],
       limit: 50,
     });
 
     res.json({ ...customer.toJSON(), orders });
   } catch (err) {
+    console.error('Customer detail error:', err.message);
     res.status(500).json({ error: 'Помилка завантаження клієнта' });
   }
 });
