@@ -317,7 +317,11 @@ export default function AdminDashboard() {
                 <div className="flex-1 min-w-0">
                   <h3 className="text-gray-900 dark:text-white text-sm font-medium truncate">{product.name}</h3>
                   <p className="text-gray-400 dark:text-white/40 text-xs">
-                    {product.Category?.name} • {Number(product.price).toLocaleString()} ₴ • {product.stock} шт
+                    {product.Category?.name} • гість {Number(product.price).toLocaleString()} ₴
+                    {product.memberPrice != null && product.memberPrice !== '' && (
+                      <> / учасн. {Number(product.memberPrice).toLocaleString()} ₴</>
+                    )}
+                    {' '}• {product.stock} шт
                     {product.sizes && Object.keys(product.sizes).length > 0 && (
                       <span className="ml-1 text-gray-300 dark:text-white/25">
                         ({Object.entries(product.sizes).map(([s, q]) => `${s}:${q}`).join(', ')})
@@ -1088,7 +1092,9 @@ function ProductForm({ product, categories, onClose, onSaved }) {
 
   const [form, setForm] = useState({
     name: product?.name || '', description: product?.description || '',
-    price: product?.price || '', categoryId: product?.categoryId || product?.category_id || '',
+    price: product?.price || '',
+    memberPrice: product?.memberPrice ?? '',
+    categoryId: product?.categoryId || product?.category_id || '',
     featured: product?.featured || false,
     printNumberEnabled: product?.printNumberEnabled || false,
     printNumberPrice: product?.printNumberPrice ?? '',
@@ -1149,6 +1155,7 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     formData.append('name', form.name);
     formData.append('description', form.description);
     formData.append('price', form.price);
+    formData.append('memberPrice', form.memberPrice === '' ? '' : form.memberPrice);
     formData.append('categoryId', form.categoryId);
     formData.append('featured', form.featured);
     formData.append('printNumberEnabled', form.printNumberEnabled);
@@ -1221,7 +1228,8 @@ function ProductForm({ product, categories, onClose, onSaved }) {
             <button type="button" onClick={() => { if (newCharKey.trim() && newCharValue.trim()) { setCharRows([...charRows, { key: newCharKey.trim(), value: newCharValue.trim() }]); setNewCharKey(''); setNewCharValue(''); } }} className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline whitespace-nowrap">+ додати</button>
           </div>
         </div>
-        <input type="number" placeholder="ціна" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className={inputClass} />
+        <input type="number" placeholder="ціна для гостя" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className={inputClass} />
+        <input type="number" placeholder="ціна для зареєстрованих" value={form.memberPrice} onChange={(e) => setForm({ ...form, memberPrice: e.target.value })} className={inputClass} />
         <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required className={inputClass}>
           <option value="">категорія</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}

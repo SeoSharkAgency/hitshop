@@ -6,7 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
 
 export default function Checkout() {
-  const { items, totalPrice, clearCart } = useCart();
+  const { items, totalPrice, clearCart, getItemPrice } = useCart();
   const { user } = useUser();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
@@ -290,7 +290,7 @@ export default function Checkout() {
                 <span className="text-hit-muted dark:text-hit-cream/50 truncate mr-3">
                   {item.name} {item.size && `• ${item.size}`}{item.printNumber && ` • №${item.printNumber}`}{item.printName && ` • ${item.printName}`} × {item.quantity}
                 </span>
-                <span className="text-hit-ink dark:text-hit-cream flex-shrink-0">{(item.price * item.quantity).toLocaleString()} ₴</span>
+                <span className="text-hit-ink dark:text-hit-cream flex-shrink-0">{(getItemPrice(item) * item.quantity).toLocaleString()} ₴</span>
               </div>
             ))}
           </div>

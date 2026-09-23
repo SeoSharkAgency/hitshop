@@ -38,7 +38,7 @@ exports.getById = async (req, res) => {
 exports.create = async (req, res) => {
   try {
     const {
-      name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart,
+      name, description, price, memberPrice, categoryId, sizes, stock, featured, characteristics, sizeChart,
       printNumberEnabled, printNameEnabled, printNumberPrice, printNamePrice,
     } = req.body;
     const image = req.file ? `/uploads/${req.file.filename}` : null;
@@ -71,6 +71,7 @@ exports.create = async (req, res) => {
       name,
       description,
       price,
+      memberPrice: memberPrice === '' || memberPrice == null ? null : parseFloat(memberPrice),
       categoryId,
       sizes: parsedSizes,
       stock: totalStock,
@@ -103,7 +104,7 @@ exports.update = async (req, res) => {
     const oldStock = product.stock;
 
     const {
-      name, description, price, categoryId, sizes, stock, featured, characteristics, sizeChart,
+      name, description, price, memberPrice, categoryId, sizes, stock, featured, characteristics, sizeChart,
       printNumberEnabled, printNameEnabled, printNumberPrice, printNamePrice,
     } = req.body;
     const updateData = {};
@@ -111,6 +112,9 @@ exports.update = async (req, res) => {
     if (name) updateData.name = name;
     if (description !== undefined) updateData.description = description;
     if (price) updateData.price = price;
+    if (memberPrice !== undefined) {
+      updateData.memberPrice = memberPrice === '' || memberPrice == null ? null : parseFloat(memberPrice);
+    }
     if (categoryId) updateData.categoryId = categoryId;
     if (characteristics !== undefined) {
       updateData.characteristics = characteristics && characteristics.trim() ? JSON.parse(characteristics) : null;

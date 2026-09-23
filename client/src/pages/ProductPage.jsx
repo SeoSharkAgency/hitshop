@@ -4,6 +4,8 @@ import { FiShoppingCart, FiArrowLeft } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useCart } from '../context/CartContext';
+import { useUser } from '../context/UserContext';
+import { resolveBasePrice } from '../utils/pricing';
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -16,6 +18,8 @@ export default function ProductPage() {
   const [printName, setPrintName] = useState('');
   const [activeTab, setActiveTab] = useState('description');
   const { addItem } = useCart();
+  const { user } = useUser();
+  const isMember = !!user;
 
   useEffect(() => {
     api.get(`/products/${id}`)
@@ -63,7 +67,9 @@ export default function ProductPage() {
   const characteristics = product.characteristics || null;
   const sizeChart = product.sizeChart || null;
 
-  const basePrice = Number(product.price) || 0;
+  const guestBase = Number(product.price) || 0;
+  const memberBase = resolveBasePrice(product, true);
+  const basePrice = resolveBasePrice(product, isMember);
   const printNumberPrice = Number(product.printNumberPrice) || 0;
   const printNamePrice = Number(product.printNamePrice) || 0;
   const usePrintNumber = wantPrintNumber && product.printNumberEnabled;
@@ -72,6 +78,10 @@ export default function ProductPage() {
     basePrice +
     (usePrintNumber ? printNumberPrice : 0) +
     (usePrintName ? printNamePrice : 0);
+  const hasMemberDeal =
+    product.memberPrice != null &&
+    product.memberPrice !== '' &&
+    memberBase !== guestBase;
 
   const handleAddToCart = () => {
     if (hasSizes && !selectedSize) {
@@ -98,7 +108,9 @@ export default function ProductPage() {
         printName: usePrintName ? String(printName).trim() : '',
         printNumberEnabled: usePrintNumber,
         printNameEnabled: usePrintName,
-        basePrice,
+        basePriceGuest: guestBase,
+        basePriceMember: memberBase,
+        basePrice: guestBase,
         printNumberPrice: usePrintNumber ? printNumberPrice : 0,
         printNamePrice: usePrintName ? printNamePrice : 0,
       }
@@ -139,6 +151,15 @@ export default function ProductPage() {
           <p className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-gold mt-3">
             {unitPrice.toLocaleString('uk-UA')} ₴
           </p>
+          {isMember ? (
+            <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-1">ціна для зареєстрованих</p>
+          ) : hasMemberDeal ? (
+            <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-1">
+              для зареєстрованих: {memberBase.toLocaleString('uk-UA')} ₴
+              {' · '}
+              <Link to="/account/login" className="text-hit-gold hover:underline">увійти</Link>
+            </p>
+          ) : null}
           {(usePrintNumber || usePrintName) && (
             <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-1">
               {basePrice.toLocaleString('uk-UA')} ₴

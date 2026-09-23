@@ -1,7 +1,19 @@
 import { Link } from 'react-router-dom';
 import { getImageUrl } from '../api';
+import { useUser } from '../context/UserContext';
+import { resolveBasePrice } from '../utils/pricing';
 
 export default function ProductCard({ product }) {
+  const { user } = useUser();
+  const isMember = !!user;
+  const guestPrice = Number(product.price) || 0;
+  const memberPrice = resolveBasePrice(product, true);
+  const displayPrice = resolveBasePrice(product, isMember);
+  const hasMemberDeal =
+    product.memberPrice != null &&
+    product.memberPrice !== '' &&
+    memberPrice !== guestPrice;
+
   const rawSizes = typeof product.sizes === 'string' ? JSON.parse(product.sizes) : product.sizes;
   const sizeKeys = Array.isArray(rawSizes) ? rawSizes : Object.keys(rawSizes || {});
 
@@ -32,12 +44,19 @@ export default function ProductCard({ product }) {
         {product.Category && (
           <p className="text-hit-muted dark:text-hit-cream/40 text-xs">{product.Category.name}</p>
         )}
-        <div className="flex items-center justify-between pt-1">
-          <span className="font-heading font-bold text-base text-hit-ink dark:text-hit-gold">
-            {Number(product.price).toLocaleString('uk-UA')} ₴
-          </span>
+        <div className="flex items-center justify-between pt-1 gap-2">
+          <div className="min-w-0">
+            <span className="font-heading font-bold text-base text-hit-ink dark:text-hit-gold">
+              {displayPrice.toLocaleString('uk-UA')} ₴
+            </span>
+            {!isMember && hasMemberDeal && (
+              <p className="text-hit-muted dark:text-hit-cream/40 text-[10px] mt-0.5">
+                учасн. {memberPrice.toLocaleString('uk-UA')} ₴
+              </p>
+            )}
+          </div>
           {sizeKeys && sizeKeys.length > 0 && (
-            <span className="text-hit-muted dark:text-hit-cream/30 text-[10px] uppercase tracking-wider font-medium">
+            <span className="text-hit-muted dark:text-hit-cream/30 text-[10px] uppercase tracking-wider font-medium shrink-0">
               {sizeKeys.join(' · ')}
             </span>
           )}

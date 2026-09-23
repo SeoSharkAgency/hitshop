@@ -19,6 +19,11 @@ const Product = sequelize.define('Product', {
     type: DataTypes.DECIMAL(10, 2),
     allowNull: false,
   },
+  memberPrice: {
+    type: DataTypes.DECIMAL(10, 2),
+    allowNull: true,
+    field: 'member_price',
+  },
   image: {
     type: DataTypes.STRING,
     allowNull: true,

@@ -1,4 +1,6 @@
 import { createContext, useContext, useReducer } from 'react';
+import { useUser } from './UserContext';
+import { getCartItemUnitPrice } from '../utils/pricing';
 
 const CartContext = createContext();
 
@@ -59,20 +61,42 @@ function cartReducer(state, action) {
 
 export function CartProvider({ children }) {
   const [state, dispatch] = useReducer(cartReducer, initialState);
+  const { user } = useUser();
+  const isMember = !!user;
 
   const addItem = (product, size, extras = {}) => {
+    const baseGuest = Number(extras.basePriceGuest ?? extras.basePrice ?? product.price) || 0;
+    const baseMember =
+      extras.basePriceMember != null && extras.basePriceMember !== ''
+        ? Number(extras.basePriceMember)
+        : baseGuest;
+    const printNumberPrice = extras.printNumberPrice || 0;
+    const printNamePrice = extras.printNamePrice || 0;
+    const unitPrice = getCartItemUnitPrice(
+      {
+        basePriceGuest: baseGuest,
+        basePriceMember: baseMember,
+        printNumberPrice,
+        printNamePrice,
+      },
+      isMember
+    );
+
     dispatch({
       type: 'ADD_ITEM',
       payload: {
         ...product,
+        price: unitPrice,
         size,
         printNumber: extras.printNumber || '',
         printName: extras.printName || '',
         printNumberEnabled: !!extras.printNumberEnabled,
         printNameEnabled: !!extras.printNameEnabled,
-        basePrice: extras.basePrice ?? product.price,
-        printNumberPrice: extras.printNumberPrice || 0,
-        printNamePrice: extras.printNamePrice || 0,
+        basePrice: baseGuest,
+        basePriceGuest: baseGuest,
+        basePriceMember: baseMember,
+        printNumberPrice,
+        printNamePrice,
       },
     });
   };
@@ -94,7 +118,12 @@ export function CartProvider({ children }) {
   };
 
   const totalItems = state.items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalPrice = state.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
+  const totalPrice = state.items.reduce(
+    (sum, item) => sum + getCartItemUnitPrice(item, isMember) * item.quantity,
+    0
+  );
+
+  const getItemPrice = (item) => getCartItemUnitPrice(item, isMember);
 
   return (
     <CartContext.Provider
@@ -106,6 +135,8 @@ export function CartProvider({ children }) {
         clearCart,
         totalItems,
         totalPrice,
+        getItemPrice,
+        isMember,
       }}
     >
       {children}

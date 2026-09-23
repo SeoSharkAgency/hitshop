@@ -1,4 +1,5 @@
 const { Order, OrderItem, Product, User, sequelize } = require('../models');
+const { resolveBasePrice } = require('../pricing');
 const { notifyNewOrder, notifyStatusChange } = require('../telegram');
 const { logAction } = require('../auditLog');
 const { sendOrderConfirmation } = require('../mailer');
@@ -87,7 +88,7 @@ exports.create = async (req, res) => {
         return res.status(400).json({ error: `"${product.name}" — набивка тексту недоступна` });
       }
 
-      let unitPrice = parseFloat(product.price) || 0;
+      let unitPrice = resolveBasePrice(product, !!userId);
       if (hasPrintNumber) unitPrice += parseFloat(product.printNumberPrice) || 0;
       if (hasPrintName) unitPrice += parseFloat(product.printNamePrice) || 0;
       item._unitPrice = unitPrice;

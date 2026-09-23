@@ -4,7 +4,7 @@ import { useCart, cartItemKey } from '../context/CartContext';
 import { getImageUrl } from '../api';
 
 export default function Cart() {
-  const { items, removeItem, updateQuantity, totalPrice } = useCart();
+  const { items, removeItem, updateQuantity, totalPrice, getItemPrice } = useCart();
 
   if (items.length === 0) {
     return (
@@ -42,7 +42,7 @@ export default function Cart() {
                 {item.printNumber && <span className="text-gray-400 dark:text-white/40 text-xs">№{item.printNumber}</span>}
                 {item.printName && <span className="text-gray-400 dark:text-white/40 text-xs uppercase">{item.printName}</span>}
                 <span className="text-hit-blue dark:text-hit-yellow text-xs font-semibold">
-                  {Number(item.price).toLocaleString()} ₴
+                  {Number(getItemPrice(item)).toLocaleString()} ₴
                 </span>
                 {(Number(item.printNumberPrice) > 0 || Number(item.printNamePrice) > 0) && (
                   <span className="text-gray-400 dark:text-white/30 text-[10px]">з набивкою</span>
