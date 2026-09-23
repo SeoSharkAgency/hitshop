@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2, FiCreditCard } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2, FiCreditCard, FiDownload } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +17,6 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
-  const [customers, setCustomers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -30,20 +29,13 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
     if (canOrders) loadOrders();
-    if (canUsers) { loadUsers(); loadCustomers(); }
+    if (canUsers) loadUsers();
   }, []);
 
   const loadProducts = () => api.get('/products').then((r) => setProducts(r.data));
   const loadOrders = () => api.get('/orders').then((r) => setOrders(r.data));
   const loadCategories = () => api.get('/categories?all=1').then((r) => setCategories(r.data));
   const loadUsers = () => api.get('/auth/users').then((r) => setUsers(r.data)).catch(() => {});
-  const loadCustomers = () =>
-    api.get('/customers')
-      .then((r) => setCustomers(r.data))
-      .catch((err) => {
-        console.error(err);
-        toast.error(err.response?.data?.error || 'Не вдалося завантажити клієнтів');
-      });
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('видалити?')) return;
@@ -291,7 +283,7 @@ export default function AdminDashboard() {
         )}
         {canUsers && (
           <button onClick={() => setTab('customers')} className={pillClass(tab === 'customers')}>
-            <FiUsers size={13} /> клієнти ({customers.length})
+            <FiUsers size={13} /> клієнти
           </button>
         )}
         {canUsers && (
@@ -486,7 +478,7 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
-      {tab === 'customers' && canUsers && <CustomersPanel customers={customers} onReload={loadCustomers} />}
+      {tab === 'customers' && canUsers && <CustomersPanel />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
       {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
       {tab === 'payment' && canPayment && (
@@ -779,10 +771,24 @@ function SocialSettingsPanel() {
   );
 }
 
-function CustomersPanel({ customers, onReload }) {
+function CustomersPanel() {
+  const [customers, setCustomers] = useState([]);
+  const [listLoading, setListLoading] = useState(true);
   const [expandedId, setExpandedId] = useState(null);
   const [detail, setDetail] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
+  const [products, setProducts] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [exporting, setExporting] = useState(false);
+  const [filters, setFilters] = useState({
+    productId: '',
+    categoryId: '',
+    productQ: '',
+    status: '',
+    paymentStatus: '',
+    dateFrom: '',
+    dateTo: '',
+  });
 
   const ORDER_STATUS = {
     new: 'Нове',
@@ -803,6 +809,79 @@ function CustomersPanel({ customers, onReload }) {
     shipped: 'bg-purple-100 text-purple-700 dark:bg-purple-500/20 dark:text-purple-300',
     delivered: 'bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-300',
     cancelled: 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-300',
+  };
+
+  const inputClass = 'w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-gray-900 dark:text-white text-xs placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none';
+
+  const buildParams = (f = filters) => {
+    const params = {};
+    Object.entries(f).forEach(([k, v]) => {
+      if (v !== '' && v != null) params[k] = v;
+    });
+    return params;
+  };
+
+  const loadCustomers = async (f = filters) => {
+    setListLoading(true);
+    try {
+      const res = await api.get('/customers', { params: buildParams(f) });
+      setCustomers(res.data);
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Не вдалося завантажити клієнтів');
+    } finally {
+      setListLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCustomers();
+    api.get('/products').then((r) => setProducts(r.data)).catch(() => {});
+    api.get('/categories?all=1').then((r) => setCategories(r.data)).catch(() => {});
+  }, []);
+
+  const handleApplyFilters = (e) => {
+    e.preventDefault();
+    setExpandedId(null);
+    setDetail(null);
+    loadCustomers();
+  };
+
+  const handleResetFilters = () => {
+    const empty = {
+      productId: '',
+      categoryId: '',
+      productQ: '',
+      status: '',
+      paymentStatus: '',
+      dateFrom: '',
+      dateTo: '',
+    };
+    setFilters(empty);
+    setExpandedId(null);
+    setDetail(null);
+    loadCustomers(empty);
+  };
+
+  const handleExport = async () => {
+    setExporting(true);
+    try {
+      const res = await api.get('/customers/export', {
+        params: buildParams(),
+        responseType: 'blob',
+      });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hitshop-customers-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('CSV завантажено');
+    } catch {
+      toast.error('Помилка експорту');
+    } finally {
+      setExporting(false);
+    }
   };
 
   const loadDetail = async (id) => {
@@ -835,7 +914,7 @@ function CustomersPanel({ customers, onReload }) {
         setExpandedId(null);
         setDetail(null);
       }
-      onReload();
+      loadCustomers();
     } catch (err) {
       toast.error(err.response?.data?.error || 'Помилка');
     }
@@ -854,12 +933,99 @@ function CustomersPanel({ customers, onReload }) {
 
   return (
     <div>
+      <form onSubmit={handleApplyFilters} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4 mb-5 space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider font-medium">Фільтр покупок / CSV</p>
+          <button
+            type="button"
+            onClick={handleExport}
+            disabled={exporting}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all disabled:opacity-50"
+          >
+            <FiDownload size={12} /> {exporting ? '...' : 'Завантажити CSV'}
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+          <input
+            type="text"
+            placeholder="Назва товару (напр. футболка)"
+            value={filters.productQ}
+            onChange={(e) => setFilters({ ...filters, productQ: e.target.value, productId: '' })}
+            className={inputClass}
+          />
+          <select
+            value={filters.productId}
+            onChange={(e) => setFilters({ ...filters, productId: e.target.value, productQ: '' })}
+            className={inputClass}
+          >
+            <option value="">Усі товари</option>
+            {products.map((p) => (
+              <option key={p.id} value={p.id}>{p.name}</option>
+            ))}
+          </select>
+          <select
+            value={filters.categoryId}
+            onChange={(e) => setFilters({ ...filters, categoryId: e.target.value })}
+            className={inputClass}
+          >
+            <option value="">Усі категорії</option>
+            {categories.map((c) => (
+              <option key={c.id} value={c.id}>{c.name}</option>
+            ))}
+          </select>
+          <select
+            value={filters.status}
+            onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+            className={inputClass}
+          >
+            <option value="">Статус замовлення — усі</option>
+            {Object.entries(ORDER_STATUS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <select
+            value={filters.paymentStatus}
+            onChange={(e) => setFilters({ ...filters, paymentStatus: e.target.value })}
+            className={inputClass}
+          >
+            <option value="">Оплата — усі</option>
+            {Object.entries(PAYMENT_STATUS).map(([k, v]) => (
+              <option key={k} value={k}>{v}</option>
+            ))}
+          </select>
+          <div className="flex gap-2">
+            <input
+              type="date"
+              value={filters.dateFrom}
+              onChange={(e) => setFilters({ ...filters, dateFrom: e.target.value })}
+              className={inputClass}
+              title="Від"
+            />
+            <input
+              type="date"
+              value={filters.dateTo}
+              onChange={(e) => setFilters({ ...filters, dateTo: e.target.value })}
+              className={inputClass}
+              title="До"
+            />
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <button type="submit" className="btn-primary text-xs">Застосувати</button>
+          <button type="button" onClick={handleResetFilters} className="btn-secondary text-xs">Скинути</button>
+        </div>
+      </form>
+
       <div className="flex justify-between items-center mb-5">
-        <p className="text-gray-400 dark:text-white/40 text-xs">{customers.length} зареєстрованих клієнтів</p>
+        <p className="text-gray-400 dark:text-white/40 text-xs">
+          {listLoading ? 'Завантаження...' : `${customers.length} клієнтів`}
+        </p>
       </div>
 
-      {customers.length === 0 ? (
-        <p className="text-gray-400 dark:text-white/40 text-sm py-8 text-center">Ще немає зареєстрованих клієнтів</p>
+      {listLoading ? (
+        <p className="text-gray-400 dark:text-white/40 text-sm py-8 text-center">Завантаження...</p>
+      ) : customers.length === 0 ? (
+        <p className="text-gray-400 dark:text-white/40 text-sm py-8 text-center">Немає клієнтів за цими фільтрами</p>
       ) : (
         <div className="space-y-2">
           {customers.map((c) => (
@@ -892,11 +1058,21 @@ function CustomersPanel({ customers, onReload }) {
                       {[c.deliveryCity, c.deliveryWarehouse].filter(Boolean).join(' · ')}
                     </p>
                   )}
+                  {c.matchedProducts && (
+                    <p className="text-hit-blue dark:text-hit-yellow/80 text-[11px] truncate mt-0.5">
+                      {c.matchedProducts}
+                    </p>
+                  )}
                 </div>
                 <div className="text-right shrink-0">
                   <p className="text-gray-900 dark:text-white text-xs font-medium">
                     {Number(c.ordersCount) || 0} зам.
                   </p>
+                  {c.totalSpent != null && (
+                    <p className="text-hit-blue dark:text-hit-yellow text-[10px]">
+                      {Number(c.totalSpent).toLocaleString('uk-UA')} ₴
+                    </p>
+                  )}
                   <p className="text-gray-400 dark:text-white/30 text-[10px]">
                     {c.createdAt ? new Date(c.createdAt).toLocaleDateString('uk-UA') : '—'}
                   </p>
