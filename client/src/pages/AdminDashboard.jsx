@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
+  const [customers, setCustomers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
@@ -29,13 +30,14 @@ export default function AdminDashboard() {
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
     if (canOrders) loadOrders();
-    if (canUsers) loadUsers();
+    if (canUsers) { loadUsers(); loadCustomers(); }
   }, []);
 
   const loadProducts = () => api.get('/products').then((r) => setProducts(r.data));
   const loadOrders = () => api.get('/orders').then((r) => setOrders(r.data));
   const loadCategories = () => api.get('/categories?all=1').then((r) => setCategories(r.data));
   const loadUsers = () => api.get('/auth/users').then((r) => setUsers(r.data)).catch(() => {});
+  const loadCustomers = () => api.get('/customers').then((r) => setCustomers(r.data)).catch(() => {});
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('видалити?')) return;
@@ -278,7 +280,12 @@ export default function AdminDashboard() {
         )}
         {canUsers && (
           <button onClick={() => setTab('users')} className={pillClass(tab === 'users')}>
-            <FiUsers size={13} /> користувачі ({users.length})
+            <FiUsers size={13} /> адміни ({users.length})
+          </button>
+        )}
+        {canUsers && (
+          <button onClick={() => setTab('customers')} className={pillClass(tab === 'customers')}>
+            <FiUsers size={13} /> клієнти ({customers.length})
           </button>
         )}
         {canUsers && (
@@ -473,6 +480,7 @@ export default function AdminDashboard() {
       )}
 
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
+      {tab === 'customers' && canUsers && <CustomersPanel customers={customers} onReload={loadCustomers} />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
       {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
       {tab === 'payment' && canPayment && (
@@ -765,6 +773,134 @@ function SocialSettingsPanel() {
   );
 }
 
+function CustomersPanel({ customers, onReload }) {
+  const [expandedId, setExpandedId] = useState(null);
+  const [detail, setDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+
+  const loadDetail = async (id) => {
+    if (expandedId === id) {
+      setExpandedId(null);
+      setDetail(null);
+      return;
+    }
+    setExpandedId(id);
+    setDetailLoading(true);
+    setDetail(null);
+    try {
+      const res = await api.get(`/customers/${id}`);
+      setDetail(res.data);
+    } catch {
+      toast.error('Не вдалося завантажити');
+      setExpandedId(null);
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleDelete = async (id, name) => {
+    if (!confirm(`Видалити клієнта «${name}»? Замовлення залишаться без прив'язки.`)) return;
+    try {
+      await api.delete(`/customers/${id}`);
+      toast.success('Видалено');
+      if (expandedId === id) {
+        setExpandedId(null);
+        setDetail(null);
+      }
+      onReload();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'Помилка');
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex justify-between items-center mb-5">
+        <p className="text-gray-400 dark:text-white/40 text-xs">{customers.length} зареєстрованих клієнтів</p>
+      </div>
+
+      {customers.length === 0 ? (
+        <p className="text-gray-400 dark:text-white/40 text-sm py-8 text-center">Ще немає зареєстрованих клієнтів</p>
+      ) : (
+        <div className="space-y-2">
+          {customers.map((c) => (
+            <div key={c.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl p-3">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-hit-gold/15 rounded-full flex items-center justify-center shrink-0">
+                  <span className="font-heading font-bold text-hit-gold text-sm">
+                    {(c.name || '?').charAt(0).toUpperCase()}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-gray-900 dark:text-white text-sm font-medium truncate">{c.name}</p>
+                  <p className="text-gray-400 dark:text-white/40 text-xs truncate">
+                    {c.email}
+                    {c.phone ? ` · ${c.phone}` : ''}
+                  </p>
+                  {(c.deliveryCity || c.deliveryWarehouse) && (
+                    <p className="text-gray-400 dark:text-white/30 text-[11px] truncate mt-0.5">
+                      {[c.deliveryCity, c.deliveryWarehouse].filter(Boolean).join(' · ')}
+                    </p>
+                  )}
+                </div>
+                <div className="text-right shrink-0">
+                  <p className="text-gray-900 dark:text-white text-xs font-medium">
+                    {Number(c.ordersCount) || 0} зам.
+                  </p>
+                  <p className="text-gray-400 dark:text-white/30 text-[10px]">
+                    {c.createdAt ? new Date(c.createdAt).toLocaleDateString('uk-UA') : '—'}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => loadDetail(c.id)}
+                  className="text-xs text-hit-blue dark:text-hit-yellow hover:underline shrink-0"
+                >
+                  {expandedId === c.id ? 'згорнути' : 'деталі'}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDelete(c.id, c.name)}
+                  className="p-1.5 text-gray-300 dark:text-white/30 hover:text-red-400 transition-colors shrink-0"
+                  title="Видалити"
+                >
+                  <FiTrash2 size={14} />
+                </button>
+              </div>
+
+              {expandedId === c.id && (
+                <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/10">
+                  {detailLoading ? (
+                    <p className="text-gray-400 text-xs">Завантаження...</p>
+                  ) : detail?.orders?.length ? (
+                    <div className="space-y-1.5">
+                      <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-1">Замовлення</p>
+                      {detail.orders.map((o) => (
+                        <div key={o.id} className="flex items-center justify-between text-xs gap-2">
+                          <span className="font-medium text-gray-900 dark:text-white">{o.orderNumber}</span>
+                          <span className="text-gray-400 dark:text-white/40">{o.status}</span>
+                          <span className="text-hit-blue dark:text-hit-yellow font-semibold">
+                            {Number(o.total).toLocaleString('uk-UA')} ₴
+                          </span>
+                          <span className="text-gray-400 dark:text-white/30">
+                            {o.createdAt ? new Date(o.createdAt).toLocaleDateString('uk-UA') : ''}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-gray-400 dark:text-white/40 text-xs">Замовлень немає</p>
+                  )}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 function UsersPanel({ users, onReload }) {
   const [showAdd, setShowAdd] = useState(false);
   const [form, setForm] = useState({ username: '', password: '', role: 'warehouse' });
@@ -830,7 +966,7 @@ function UsersPanel({ users, onReload }) {
   return (
     <div>
       <div className="flex justify-between items-center mb-5">
-        <p className="text-gray-400 dark:text-white/40 text-xs">{users.length} користувачів</p>
+        <p className="text-gray-400 dark:text-white/40 text-xs">{users.length} адмінів / співробітників</p>
         <button onClick={() => setShowAdd(!showAdd)} className="btn-primary flex items-center gap-1.5 text-xs">
           <FiPlus size={13} /> додати
         </button>
@@ -838,7 +974,7 @@ function UsersPanel({ users, onReload }) {
 
       {showAdd && (
         <div className="bg-gray-50 dark:bg-white/5 border border-hit-yellow/30 rounded-2xl p-5 mb-5">
-          <p className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-4">новий користувач</p>
+          <p className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-4">новий співробітник</p>
           <form onSubmit={handleAdd} className="grid grid-cols-1 md:grid-cols-3 gap-3">
             <input type="text" placeholder="логін" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} required className={inputClass} />
             <input type="password" placeholder="пароль" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required className={inputClass} />

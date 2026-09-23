@@ -241,7 +241,11 @@ export default function Checkout() {
                   <button
                     key={city.ref}
                     type="button"
-                    onClick={() => handleCitySelect(city)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleCitySelect(city);
+                    }}
                     className="w-full text-left px-4 py-2.5 text-sm text-hit-ink dark:text-hit-cream hover:bg-hit-gold/10 transition-colors"
                   >
                     {city.name}
@@ -269,7 +273,11 @@ export default function Checkout() {
                   <button
                     key={wh.ref}
                     type="button"
-                    onClick={() => handleWarehouseSelect(wh)}
+                    onMouseDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      handleWarehouseSelect(wh);
+                    }}
                     className="w-full text-left px-4 py-2.5 text-sm text-hit-ink dark:text-hit-cream hover:bg-hit-gold/10 transition-colors"
                   >
                     {wh.description}
