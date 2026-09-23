@@ -37,7 +37,13 @@ export default function AdminDashboard() {
   const loadOrders = () => api.get('/orders').then((r) => setOrders(r.data));
   const loadCategories = () => api.get('/categories?all=1').then((r) => setCategories(r.data));
   const loadUsers = () => api.get('/auth/users').then((r) => setUsers(r.data)).catch(() => {});
-  const loadCustomers = () => api.get('/customers').then((r) => setCustomers(r.data)).catch(() => {});
+  const loadCustomers = () =>
+    api.get('/customers')
+      .then((r) => setCustomers(r.data))
+      .catch((err) => {
+        console.error(err);
+        toast.error(err.response?.data?.error || 'Не вдалося завантажити клієнтів');
+      });
 
   const handleDeleteProduct = async (id) => {
     if (!confirm('видалити?')) return;

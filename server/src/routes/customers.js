@@ -12,7 +12,7 @@ router.get('/', authMiddleware, requireRole('admin'), async (req, res) => {
         exclude: ['passwordHash'],
         include: [
           [
-            sequelize.literal('(SELECT COUNT(*)::int FROM orders WHERE orders.user_id = users.id)'),
+            sequelize.literal('(SELECT COUNT(*)::int FROM orders WHERE orders.user_id = "User".id)'),
             'ordersCount',
           ],
         ],
