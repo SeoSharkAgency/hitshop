@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2, FiCreditCard, FiDownload } from 'react-icons/fi';
+import { FiPackage, FiShoppingBag, FiLogOut, FiPlus, FiEdit2, FiTrash2, FiUsers, FiFileText, FiBarChart2, FiCreditCard, FiDownload, FiClock } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
@@ -11,11 +11,12 @@ export default function AdminDashboard() {
   const { admin, logout } = useAuth();
   const role = admin?.role || 'admin';
 
-  const defaultTab = role === 'accountant' ? 'orders' : 'products';
+  const defaultTab = role === 'accountant' ? 'orders' : role === 'warehouse' ? 'queue' : 'products';
   const [tab, setTab] = useState(defaultTab);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState([]);
+  const [orderPresetFilter, setOrderPresetFilter] = useState('');
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -29,6 +30,7 @@ export default function AdminDashboard() {
   const canAnalytics = role === 'admin' || role === 'accountant';
   const canPayment = role === 'admin' || role === 'accountant';
   const canTtn = role === 'admin' || role === 'warehouse';
+  const canQueue = role === 'admin' || role === 'warehouse';
 
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
@@ -271,6 +273,172 @@ export default function AdminDashboard() {
       : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/30'
   }`;
 
+  const paidNewOrders = orders.filter((o) => o.paymentStatus === 'paid' && o.status === 'new');
+  const paidProcessingOrders = orders.filter((o) => o.paymentStatus === 'paid' && o.status === 'processing');
+
+  const getFilteredOrders = () => {
+    if (orderPresetFilter === 'paid_new') return paidNewOrders;
+    if (orderPresetFilter === 'paid_processing') return paidProcessingOrders;
+    if (orderStatusFilter.length) return orders.filter((o) => orderStatusFilter.includes(o.status));
+    return orders;
+  };
+
+  const selectPreset = (preset) => {
+    setOrderPresetFilter((prev) => (prev === preset ? '' : preset));
+    setOrderStatusFilter([]);
+  };
+
+  const toggleStatusFilter = (key) => {
+    setOrderPresetFilter('');
+    setOrderStatusFilter((prev) => (
+      prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]
+    ));
+  };
+
+  const renderOrderCard = (order) => (
+    <div key={order.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
+      <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
+        <div>
+          <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm">{order.orderNumber}</h3>
+          <p className="text-gray-500 dark:text-white/50 text-xs mt-0.5">{order.customerName} • {order.customerPhone}{order.customerEmail ? ` • ${order.customerEmail}` : ''}</p>
+          {order.deliveryAddress && <p className="text-gray-400 dark:text-white/30 text-xs mt-0.5">📦 {order.deliveryAddress}</p>}
+        </div>
+        <div className="text-right">
+          <p className="font-heading font-bold text-hit-blue dark:text-hit-yellow">{Number(order.total).toLocaleString()} ₴</p>
+          <p className="text-gray-400 dark:text-white/30 text-[10px] mt-0.5">{new Date(order.createdAt).toLocaleDateString('uk-UA')}</p>
+          {role === 'admin' && (
+            <button
+              onClick={() => handleDeleteOrder(order)}
+              className="mt-2 inline-flex items-center gap-1 text-[10px] text-red-500 hover:text-red-600 transition-colors"
+              title="Видалити замовлення"
+            >
+              <FiTrash2 size={11} /> видалити замовлення
+            </button>
+          )}
+        </div>
+      </div>
+      {order.items?.length > 0 && (
+        <div className="mb-3 space-y-0.5">
+          {order.items.map((item, i) => (
+            <p key={i} className="text-gray-400 dark:text-white/40 text-xs">
+              {item.Product?.name} {item.size && `(${item.size})`}
+              {item.printNumber && ` №${item.printNumber}`}
+              {item.printName && ` «${item.printName}»`}
+              {' '}× {item.quantity}
+            </p>
+          ))}
+        </div>
+      )}
+      <div className="flex flex-wrap gap-3 pt-3 border-t border-gray-200 dark:border-white/5 items-center">
+        {canOrderStatus ? (
+          <select value={order.status} onChange={(e) => handleStatusChange(order.id, 'status', e.target.value)}
+            className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
+            <option value="new">нове</option>
+            <option value="processing">в обробці</option>
+            <option value="shipped">відправлено</option>
+            <option value="delivered">доставлено</option>
+            <option value="cancelled">скасовано</option>
+          </select>
+        ) : (
+          <span className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-500 dark:text-white/50 text-xs">
+            статус: {ORDER_STATUS_LABELS[order.status] || order.status}
+          </span>
+        )}
+        {canPaymentStatus ? (
+          <select value={order.paymentStatus} onChange={(e) => handleStatusChange(order.id, 'paymentStatus', e.target.value)}
+            className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
+            <option value="pending">очікує</option>
+            <option value="paid">оплачено</option>
+            <option value="failed">відхилено</option>
+            <option value="refunded">повернено</option>
+          </select>
+        ) : (
+          <span className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-500 dark:text-white/50 text-xs">
+            оплата: {PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus}
+          </span>
+        )}
+        {canOrderStatus && order.paymentStatus === 'paid' && order.status === 'new' && (
+          <button
+            type="button"
+            onClick={() => handleStatusChange(order.id, 'status', 'processing')}
+            className="text-xs bg-hit-yellow text-[#0a0e1a] font-medium px-3 py-1.5 rounded-lg hover:opacity-90 transition-opacity"
+          >
+            взяти в обробку
+          </button>
+        )}
+      </div>
+
+      {(canTtn || order.ttnNumber) && (
+      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/5">
+        {order.ttnNumber ? (
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-gray-400 dark:text-white/40 text-xs">ТТН:</span>
+              <a
+                href={`https://novaposhta.ua/tracking/?cargo_number=${order.ttnNumber}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline"
+              >
+                {order.ttnNumber}
+              </a>
+              {canTtn && (
+                <>
+                  <button onClick={() => handleTrackTTN(order.ttnNumber, order.id)}
+                    className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/50 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                    статус
+                  </button>
+                  {order.deliveryCityRef && order.deliveryWarehouseRef && (
+                    <button onClick={() => handleRecreateTTN(order)}
+                      className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors">
+                      перестворити
+                    </button>
+                  )}
+                  <button onClick={() => handleDeleteTTN(order)}
+                    className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
+                    видалити
+                  </button>
+                </>
+              )}
+            </div>
+            {trackingInfo[order.id] && (
+              <p className="text-green-600 dark:text-green-400 text-[11px]">
+                {trackingInfo[order.id].status}
+                {trackingInfo[order.id].scheduledDeliveryDate && ` • очік: ${trackingInfo[order.id].scheduledDeliveryDate}`}
+              </p>
+            )}
+          </div>
+        ) : canTtn && order.deliveryCityRef && order.deliveryWarehouseRef ? (
+          <div className="space-y-2">
+            <button
+              onClick={() => openTtnModal(order)}
+              className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
+            >
+              📦 Створити ТТН через НП
+            </button>
+            <div className="flex items-center gap-1.5">
+              <input type="text" placeholder="або вставте ТТН вручну" value={manualTtn[order.id] || ''}
+                onChange={(e) => setManualTtn({ ...manualTtn, [order.id]: e.target.value })}
+                className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-gold focus:outline-none" />
+              <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
+            </div>
+          </div>
+        ) : canTtn ? (
+          <div className="space-y-2">
+            <p className="text-gray-300 dark:text-white/20 text-[10px]">НП ref-и відсутні (ручне замовлення)</p>
+            <div className="flex items-center gap-1.5">
+              <input type="text" placeholder="вставте ТТН вручну" value={manualTtn[order.id] || ''}
+                onChange={(e) => setManualTtn({ ...manualTtn, [order.id]: e.target.value })}
+                className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-gold focus:outline-none" />
+              <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
+            </div>
+          </div>
+        ) : null}
+      </div>
+      )}
+    </div>
+  );
+
   return (
     <div className="pt-24 max-w-6xl mx-auto px-4 pb-16">
       <div className="flex items-center justify-between mb-8">
@@ -295,6 +463,11 @@ export default function AdminDashboard() {
         {canOrders && (
           <button onClick={() => setTab('orders')} className={pillClass(tab === 'orders')}>
             <FiShoppingBag size={13} /> замовлення ({orders.length})
+          </button>
+        )}
+        {canQueue && (
+          <button onClick={() => setTab('queue')} className={pillClass(tab === 'queue')}>
+            <FiClock size={13} /> черга ({paidNewOrders.length + paidProcessingOrders.length})
           </button>
         )}
         {canAnalytics && (
@@ -383,188 +556,116 @@ export default function AdminDashboard() {
 
       {tab === 'orders' && canOrders && (
         <div>
-          <div className="mb-4">
-            <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус замовлення</p>
-            <div className="flex flex-wrap gap-1.5">
-              {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => {
-                const active = orderStatusFilter.includes(key);
-                return (
+          <div className="mb-4 space-y-3">
+            <div>
+              <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Швидкий фільтр</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { key: 'paid_new', label: `оплачені нові (${paidNewOrders.length})` },
+                  { key: 'paid_processing', label: `оплачені в обробці (${paidProcessingOrders.length})` },
+                ].map(({ key, label }) => (
                   <button
                     key={key}
                     type="button"
-                    onClick={() => setOrderStatusFilter((prev) => (
-                      active ? prev.filter((s) => s !== key) : [...prev, key]
-                    ))}
+                    onClick={() => selectPreset(key)}
                     className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
-                      active
-                        ? 'bg-hit-yellow text-[#0a0e1a] border-hit-yellow'
-                        : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                      orderPresetFilter === key
+                        ? 'bg-green-500 text-white border-green-500'
+                        : 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20 hover:border-green-400'
                     }`}
                   >
                     {label}
                   </button>
-                );
-              })}
-              {orderStatusFilter.length > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setOrderStatusFilter([])}
-                  className="px-3 py-1.5 rounded-full text-[11px] font-medium text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors"
-                >
-                  скинути
-                </button>
-              )}
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус замовлення</p>
+              <div className="flex flex-wrap gap-1.5">
+                {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => {
+                  const active = !orderPresetFilter && orderStatusFilter.includes(key);
+                  return (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => toggleStatusFilter(key)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
+                        active
+                          ? 'bg-hit-yellow text-[#0a0e1a] border-hit-yellow'
+                          : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+                {(orderStatusFilter.length > 0 || orderPresetFilter) && (
+                  <button
+                    type="button"
+                    onClick={() => { setOrderStatusFilter([]); setOrderPresetFilter(''); }}
+                    className="px-3 py-1.5 rounded-full text-[11px] font-medium text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors"
+                  >
+                    скинути
+                  </button>
+                )}
+              </div>
             </div>
           </div>
           {(() => {
-            const filteredOrders = orderStatusFilter.length
-              ? orders.filter((o) => orderStatusFilter.includes(o.status))
-              : orders;
+            const filteredOrders = getFilteredOrders();
             if (orders.length === 0) {
               return <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">замовлень немає</p>;
             }
             if (filteredOrders.length === 0) {
-              return <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">немає замовлень з обраними статусами</p>;
+              return <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">немає замовлень за обраним фільтром</p>;
             }
-            return (
-            <div className="space-y-3">
-              {filteredOrders.map((order) => (
-                <div key={order.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
-                  <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
-                    <div>
-                      <h3 className="font-heading font-semibold text-gray-900 dark:text-white text-sm">{order.orderNumber}</h3>
-                      <p className="text-gray-500 dark:text-white/50 text-xs mt-0.5">{order.customerName} • {order.customerPhone}{order.customerEmail ? ` • ${order.customerEmail}` : ''}</p>
-                      {order.deliveryAddress && <p className="text-gray-400 dark:text-white/30 text-xs mt-0.5">📦 {order.deliveryAddress}</p>}
-                    </div>
-                    <div className="text-right">
-                      <p className="font-heading font-bold text-hit-blue dark:text-hit-yellow">{Number(order.total).toLocaleString()} ₴</p>
-                      <p className="text-gray-400 dark:text-white/30 text-[10px] mt-0.5">{new Date(order.createdAt).toLocaleDateString('uk-UA')}</p>
-                      {role === 'admin' && (
-                        <button
-                          onClick={() => handleDeleteOrder(order)}
-                          className="mt-2 inline-flex items-center gap-1 text-[10px] text-red-500 hover:text-red-600 transition-colors"
-                          title="Видалити замовлення"
-                        >
-                          <FiTrash2 size={11} /> видалити замовлення
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  {order.items?.length > 0 && (
-                    <div className="mb-3 space-y-0.5">
-                      {order.items.map((item, i) => (
-                        <p key={i} className="text-gray-400 dark:text-white/40 text-xs">
-                          {item.Product?.name} {item.size && `(${item.size})`}
-                          {item.printNumber && ` №${item.printNumber}`}
-                          {item.printName && ` «${item.printName}»`}
-                          {' '}× {item.quantity}
-                        </p>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex flex-wrap gap-3 pt-3 border-t border-gray-200 dark:border-white/5 items-center">
-                    {canOrderStatus ? (
-                      <select value={order.status} onChange={(e) => handleStatusChange(order.id, 'status', e.target.value)}
-                        className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
-                        <option value="new">нове</option>
-                        <option value="processing">в обробці</option>
-                        <option value="shipped">відправлено</option>
-                        <option value="delivered">доставлено</option>
-                        <option value="cancelled">скасовано</option>
-                      </select>
-                    ) : (
-                      <span className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-500 dark:text-white/50 text-xs">
-                        статус: {ORDER_STATUS_LABELS[order.status] || order.status}
-                      </span>
-                    )}
-                    {canPaymentStatus ? (
-                      <select value={order.paymentStatus} onChange={(e) => handleStatusChange(order.id, 'paymentStatus', e.target.value)}
-                        className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
-                        <option value="pending">очікує</option>
-                        <option value="paid">оплачено</option>
-                        <option value="failed">відхилено</option>
-                        <option value="refunded">повернено</option>
-                      </select>
-                    ) : (
-                      <span className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-500 dark:text-white/50 text-xs">
-                        оплата: {PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus}
-                      </span>
-                    )}
-                  </div>
-
-                  {(canTtn || order.ttnNumber) && (
-                  <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/5">
-                    {order.ttnNumber ? (
-                      <div className="space-y-1.5">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-gray-400 dark:text-white/40 text-xs">ТТН:</span>
-                          <a
-                            href={`https://novaposhta.ua/tracking/?cargo_number=${order.ttnNumber}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-hit-blue dark:text-hit-yellow text-xs font-medium hover:underline"
-                          >
-                            {order.ttnNumber}
-                          </a>
-                          {canTtn && (
-                            <>
-                              <button onClick={() => handleTrackTTN(order.ttnNumber, order.id)}
-                                className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/50 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
-                                статус
-                              </button>
-                              {order.deliveryCityRef && order.deliveryWarehouseRef && (
-                                <button onClick={() => handleRecreateTTN(order)}
-                                  className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors">
-                                  перестворити
-                                </button>
-                              )}
-                              <button onClick={() => handleDeleteTTN(order)}
-                                className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
-                                видалити
-                              </button>
-                            </>
-                          )}
-                        </div>
-                        {trackingInfo[order.id] && (
-                          <p className="text-green-600 dark:text-green-400 text-[11px]">
-                            {trackingInfo[order.id].status}
-                            {trackingInfo[order.id].scheduledDeliveryDate && ` • очік: ${trackingInfo[order.id].scheduledDeliveryDate}`}
-                          </p>
-                        )}
-                      </div>
-                    ) : canTtn && order.deliveryCityRef && order.deliveryWarehouseRef ? (
-                      <div className="space-y-2">
-                        <button
-                          onClick={() => openTtnModal(order)}
-                          className="text-xs bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded-lg transition-colors"
-                        >
-                          📦 Створити ТТН через НП
-                        </button>
-                        <div className="flex items-center gap-1.5">
-                          <input type="text" placeholder="або вставте ТТН вручну" value={manualTtn[order.id] || ''}
-                            onChange={(e) => setManualTtn({ ...manualTtn, [order.id]: e.target.value })}
-                            className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-gold focus:outline-none" />
-                          <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
-                        </div>
-                      </div>
-                    ) : canTtn ? (
-                      <div className="space-y-2">
-                        <p className="text-gray-300 dark:text-white/20 text-[10px]">НП ref-и відсутні (ручне замовлення)</p>
-                        <div className="flex items-center gap-1.5">
-                          <input type="text" placeholder="вставте ТТН вручну" value={manualTtn[order.id] || ''}
-                            onChange={(e) => setManualTtn({ ...manualTtn, [order.id]: e.target.value })}
-                            className="flex-1 bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-2 py-1 text-xs text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-gold focus:outline-none" />
-                          <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </div>
-                  )}
-                </div>
-              ))}
-            </div>
-            );
+            return <div className="space-y-3">{filteredOrders.map(renderOrderCard)}</div>;
           })()}
+        </div>
+      )}
+
+      {tab === 'queue' && canQueue && (
+        <div className="space-y-8">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-4">
+              <p className="text-amber-700 dark:text-amber-300 text-[10px] uppercase tracking-wider mb-1">Оплачені нові</p>
+              <p className="font-heading font-bold text-2xl text-amber-800 dark:text-amber-200">{paidNewOrders.length}</p>
+              <p className="text-amber-600/70 dark:text-amber-300/50 text-[10px] mt-0.5">ще не взяті в обробку</p>
+            </div>
+            <div className="bg-blue-50 dark:bg-blue-500/10 border border-blue-200 dark:border-blue-500/20 rounded-2xl p-4">
+              <p className="text-blue-700 dark:text-blue-300 text-[10px] uppercase tracking-wider mb-1">Оплачені в обробці</p>
+              <p className="font-heading font-bold text-2xl text-blue-800 dark:text-blue-200">{paidProcessingOrders.length}</p>
+              <p className="text-blue-600/70 dark:text-blue-300/50 text-[10px] mt-0.5">чекають відправки</p>
+            </div>
+          </div>
+
+          <section>
+            <h2 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-3">
+              Оплачені — ще не в обробці
+              <span className="ml-2 text-gray-400 dark:text-white/40 font-normal">({paidNewOrders.length})</span>
+            </h2>
+            {paidNewOrders.length === 0 ? (
+              <p className="text-gray-400 dark:text-white/40 text-sm py-6 text-center border border-dashed border-gray-200 dark:border-white/10 rounded-2xl">
+                немає оплачених нових замовлень
+              </p>
+            ) : (
+              <div className="space-y-3">{paidNewOrders.map(renderOrderCard)}</div>
+            )}
+          </section>
+
+          <section>
+            <h2 className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-3">
+              Оплачені — в обробці
+              <span className="ml-2 text-gray-400 dark:text-white/40 font-normal">({paidProcessingOrders.length})</span>
+            </h2>
+            {paidProcessingOrders.length === 0 ? (
+              <p className="text-gray-400 dark:text-white/40 text-sm py-6 text-center border border-dashed border-gray-200 dark:border-white/10 rounded-2xl">
+                немає оплачених замовлень в обробці
+              </p>
+            ) : (
+              <div className="space-y-3">{paidProcessingOrders.map(renderOrderCard)}</div>
+            )}
+          </section>
         </div>
       )}
 
