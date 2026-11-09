@@ -7,6 +7,7 @@ const { requireRole } = require('../middleware/auth');
 router.post('/', orderController.create);
 router.get('/track/:orderNumber', orderController.getByOrderNumber);
 router.get('/', authMiddleware, orderController.getAll);
+router.get('/export', authMiddleware, requireRole('admin', 'warehouse'), orderController.exportCsv);
 router.get('/:id', authMiddleware, orderController.getById);
 router.put('/:id', authMiddleware, requireRole('admin', 'accountant', 'warehouse'), orderController.updateStatus);
 router.delete('/:id', authMiddleware, requireRole('admin'), orderController.remove);

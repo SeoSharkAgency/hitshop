@@ -17,6 +17,7 @@ export default function AdminDashboard() {
   const [orders, setOrders] = useState([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState([]);
   const [orderPresetFilter, setOrderPresetFilter] = useState('');
+  const [exportingOrders, setExportingOrders] = useState(false);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
@@ -295,6 +296,33 @@ export default function AdminDashboard() {
     ));
   };
 
+  const exportOrdersCsv = async (params = {}) => {
+    setExportingOrders(true);
+    try {
+      const res = await api.get('/orders/export', { params, responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const suffix = params.preset || 'orders';
+      a.download = `hitshop-shipping-${suffix}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('CSV завантажено');
+    } catch {
+      toast.error('Помилка експорту');
+    } finally {
+      setExportingOrders(false);
+    }
+  };
+
+  const exportCurrentOrdersFilter = () => {
+    if (orderPresetFilter) return exportOrdersCsv({ preset: orderPresetFilter });
+    const params = {};
+    if (orderStatusFilter.length) params.status = orderStatusFilter.join(',');
+    return exportOrdersCsv(params);
+  };
+
   const renderOrderCard = (order) => (
     <div key={order.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
       <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
@@ -557,27 +585,39 @@ export default function AdminDashboard() {
       {tab === 'orders' && canOrders && (
         <div>
           <div className="mb-4 space-y-3">
-            <div>
-              <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Швидкий фільтр</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  { key: 'paid_new', label: `оплачені нові (${paidNewOrders.length})` },
-                  { key: 'paid_processing', label: `оплачені в обробці (${paidProcessingOrders.length})` },
-                ].map(({ key, label }) => (
-                  <button
-                    key={key}
-                    type="button"
-                    onClick={() => selectPreset(key)}
-                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
-                      orderPresetFilter === key
-                        ? 'bg-green-500 text-white border-green-500'
-                        : 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20 hover:border-green-400'
-                    }`}
-                  >
-                    {label}
-                  </button>
-                ))}
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div>
+                <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Швидкий фільтр</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {[
+                    { key: 'paid_new', label: `оплачені нові (${paidNewOrders.length})` },
+                    { key: 'paid_processing', label: `оплачені в обробці (${paidProcessingOrders.length})` },
+                  ].map(({ key, label }) => (
+                    <button
+                      key={key}
+                      type="button"
+                      onClick={() => selectPreset(key)}
+                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
+                        orderPresetFilter === key
+                          ? 'bg-green-500 text-white border-green-500'
+                          : 'bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 border-green-200 dark:border-green-500/20 hover:border-green-400'
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  ))}
+                </div>
               </div>
+              {canQueue && (
+                <button
+                  type="button"
+                  onClick={exportCurrentOrdersFilter}
+                  disabled={exportingOrders}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all disabled:opacity-50"
+                >
+                  <FiDownload size={12} /> {exportingOrders ? '...' : 'CSV для відправки'}
+                </button>
+              )}
             </div>
             <div>
               <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус замовлення</p>
@@ -626,6 +666,37 @@ export default function AdminDashboard() {
 
       {tab === 'queue' && canQueue && (
         <div className="space-y-8">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-gray-400 dark:text-white/40 text-xs">
+              Оплачені замовлення для комплектації та відправки
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              <button
+                type="button"
+                onClick={() => exportOrdersCsv({ preset: 'paid_new' })}
+                disabled={exportingOrders || paidNewOrders.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-amber-100 text-amber-800 dark:bg-amber-500/20 dark:text-amber-300 hover:bg-amber-200 dark:hover:bg-amber-500/30 transition-all disabled:opacity-50"
+              >
+                <FiDownload size={12} /> CSV нові
+              </button>
+              <button
+                type="button"
+                onClick={() => exportOrdersCsv({ preset: 'paid_processing' })}
+                disabled={exportingOrders || paidProcessingOrders.length === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-blue-100 text-blue-800 dark:bg-blue-500/20 dark:text-blue-300 hover:bg-blue-200 dark:hover:bg-blue-500/30 transition-all disabled:opacity-50"
+              >
+                <FiDownload size={12} /> CSV в обробці
+              </button>
+              <button
+                type="button"
+                onClick={() => exportOrdersCsv({ preset: 'queue' })}
+                disabled={exportingOrders || (paidNewOrders.length + paidProcessingOrders.length) === 0}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all disabled:opacity-50"
+              >
+                <FiDownload size={12} /> {exportingOrders ? '...' : 'CSV уся черга'}
+              </button>
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-4">
               <p className="text-amber-700 dark:text-amber-300 text-[10px] uppercase tracking-wider mb-1">Оплачені нові</p>

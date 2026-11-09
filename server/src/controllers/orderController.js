@@ -1,3 +1,4 @@
+const { Op } = require('sequelize');
 const { Order, OrderItem, Product, User, sequelize } = require('../models');
 const { resolveBasePrice } = require('../pricing');
 const { notifyNewOrder, notifyStatusChange } = require('../telegram');
@@ -201,6 +202,124 @@ exports.getAll = async (req, res) => {
     res.json(orders);
   } catch (err) {
     res.status(500).json({ error: 'Помилка завантаження замовлень' });
+  }
+};
+
+function escapeCsv(value) {
+  const s = value == null ? '' : String(value);
+  if (/[",\n\r]/.test(s)) return `"${s.replace(/"/g, '""')}"`;
+  return s;
+}
+
+const ORDER_STATUS_UA = {
+  new: 'нове',
+  processing: 'в обробці',
+  shipped: 'відправлено',
+  delivered: 'доставлено',
+  cancelled: 'скасовано',
+};
+
+const PAYMENT_STATUS_UA = {
+  pending: 'очікує',
+  paid: 'оплачено',
+  failed: 'відхилено',
+  refunded: 'повернено',
+};
+
+exports.exportCsv = async (req, res) => {
+  try {
+    const { preset, status, paymentStatus } = req.query;
+    const where = {};
+
+    if (preset === 'queue') {
+      where.paymentStatus = 'paid';
+      where.status = { [Op.in]: ['new', 'processing'] };
+    } else if (preset === 'paid_new') {
+      where.paymentStatus = 'paid';
+      where.status = 'new';
+    } else if (preset === 'paid_processing') {
+      where.paymentStatus = 'paid';
+      where.status = 'processing';
+    } else {
+      if (status) {
+        const statuses = String(status).split(',').map((s) => s.trim()).filter(Boolean);
+        if (statuses.length === 1) where.status = statuses[0];
+        else if (statuses.length > 1) where.status = { [Op.in]: statuses };
+      }
+      if (paymentStatus) {
+        const payments = String(paymentStatus).split(',').map((s) => s.trim()).filter(Boolean);
+        if (payments.length === 1) where.paymentStatus = payments[0];
+        else if (payments.length > 1) where.paymentStatus = { [Op.in]: payments };
+      }
+    }
+
+    const orders = await Order.findAll({
+      where,
+      include: [{ model: OrderItem, as: 'items', include: [Product] }],
+      order: [['createdAt', 'ASC']],
+    });
+
+    const header = [
+      'Номер замовлення',
+      'Дата',
+      'Статус замовлення',
+      'Статус оплати',
+      'ПІБ',
+      'Телефон',
+      'Email',
+      'Адреса доставки',
+      'ТТН',
+      'Товар',
+      'Розмір',
+      'Номер набивки',
+      'Текст набивки',
+      'Кількість',
+      'Ціна за од.',
+      'Сума позиції',
+      'Сума замовлення',
+      'Доставка',
+      'Примітки',
+    ];
+
+    const lines = [header.map(escapeCsv).join(',')];
+    for (const order of orders) {
+      const items = order.items?.length ? order.items : [null];
+      for (const item of items) {
+        const qty = item ? Number(item.quantity) || 0 : 0;
+        const price = item ? Number(item.price) || 0 : 0;
+        lines.push([
+          order.orderNumber,
+          order.createdAt ? new Date(order.createdAt).toLocaleString('uk-UA') : '',
+          ORDER_STATUS_UA[order.status] || order.status,
+          PAYMENT_STATUS_UA[order.paymentStatus] || order.paymentStatus,
+          order.customerName || '',
+          order.customerPhone || '',
+          order.customerEmail || '',
+          order.deliveryAddress || '',
+          order.ttnNumber || '',
+          item?.Product?.name || (item ? 'Товар' : ''),
+          item?.size || '',
+          item?.printNumber || '',
+          item?.printName || '',
+          item ? qty : '',
+          item ? price.toFixed(2) : '',
+          item ? (qty * price).toFixed(2) : '',
+          Number(order.total).toFixed(2),
+          Number(order.deliveryCost || 0).toFixed(2),
+          order.notes || '',
+        ].map(escapeCsv).join(','));
+      }
+    }
+
+    const filename = `hitshop-shipping-${preset || 'orders'}-${new Date().toISOString().slice(0, 10)}.csv`;
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.send('\uFEFF' + lines.join('\n'));
+
+    logAction(req, 'export', 'order', null, `CSV відправки (${orders.length} замовлень), preset=${preset || '-'}`);
+  } catch (err) {
+    console.error('Orders export error:', err.message);
+    res.status(500).json({ error: 'Помилка експорту замовлень' });
   }
 };
 
