@@ -269,46 +269,47 @@ exports.exportCsv = async (req, res) => {
       'Email',
       'Адреса доставки',
       'ТТН',
-      'Товар',
-      'Розмір',
-      'Номер набивки',
-      'Текст набивки',
-      'Кількість',
-      'Ціна за од.',
-      'Сума позиції',
+      'К-сть позицій',
+      'Товари та параметри',
       'Сума замовлення',
       'Доставка',
       'Примітки',
     ];
 
+    const formatItem = (item) => {
+      const parts = [
+        item.Product?.name || 'Товар',
+        item.size ? `розмір ${item.size}` : null,
+        item.printNumber ? `№${item.printNumber}` : null,
+        item.printName ? `набивка «${item.printName}»` : null,
+        `×${item.quantity}`,
+        `${Number(item.price).toFixed(2)} ₴`,
+      ].filter(Boolean);
+      return parts.join(' · ');
+    };
+
     const lines = [header.map(escapeCsv).join(',')];
     for (const order of orders) {
-      const items = order.items?.length ? order.items : [null];
-      for (const item of items) {
-        const qty = item ? Number(item.quantity) || 0 : 0;
-        const price = item ? Number(item.price) || 0 : 0;
-        lines.push([
-          order.orderNumber,
-          order.createdAt ? new Date(order.createdAt).toLocaleString('uk-UA') : '',
-          ORDER_STATUS_UA[order.status] || order.status,
-          PAYMENT_STATUS_UA[order.paymentStatus] || order.paymentStatus,
-          order.customerName || '',
-          order.customerPhone || '',
-          order.customerEmail || '',
-          order.deliveryAddress || '',
-          order.ttnNumber || '',
-          item?.Product?.name || (item ? 'Товар' : ''),
-          item?.size || '',
-          item?.printNumber || '',
-          item?.printName || '',
-          item ? qty : '',
-          item ? price.toFixed(2) : '',
-          item ? (qty * price).toFixed(2) : '',
-          Number(order.total).toFixed(2),
-          Number(order.deliveryCost || 0).toFixed(2),
-          order.notes || '',
-        ].map(escapeCsv).join(','));
-      }
+      const items = order.items || [];
+      const itemsText = items.length
+        ? items.map((item, i) => `${i + 1}) ${formatItem(item)}`).join(' | ')
+        : '';
+      lines.push([
+        order.orderNumber,
+        order.createdAt ? new Date(order.createdAt).toLocaleString('uk-UA') : '',
+        ORDER_STATUS_UA[order.status] || order.status,
+        PAYMENT_STATUS_UA[order.paymentStatus] || order.paymentStatus,
+        order.customerName || '',
+        order.customerPhone || '',
+        order.customerEmail || '',
+        order.deliveryAddress || '',
+        order.ttnNumber || '',
+        items.length,
+        itemsText,
+        Number(order.total).toFixed(2),
+        Number(order.deliveryCost || 0).toFixed(2),
+        order.notes || '',
+      ].map(escapeCsv).join(','));
     }
 
     const filename = `hitshop-shipping-${preset || 'orders'}-${new Date().toISOString().slice(0, 10)}.csv`;
