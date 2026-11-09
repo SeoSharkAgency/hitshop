@@ -291,9 +291,8 @@ exports.exportCsv = async (req, res) => {
     const lines = [header.map(escapeCsv).join(',')];
     for (const order of orders) {
       const items = order.items || [];
-      const itemsText = items.length
-        ? items.map((item, i) => `${i + 1}) ${formatItem(item)}`).join(' | ')
-        : '';
+      // Newlines inside quoted CSV cell → Excel/Sheets show each item on its own line
+      const itemsText = items.map((item, i) => `${i + 1}) ${formatItem(item)}`).join('\n');
       lines.push([
         order.orderNumber,
         order.createdAt ? new Date(order.createdAt).toLocaleString('uk-UA') : '',
