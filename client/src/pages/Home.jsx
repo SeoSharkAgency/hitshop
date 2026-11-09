@@ -90,7 +90,7 @@ export default function Home() {
           <div className="bg-gray-50 dark:bg-hit-blue/30 border border-gray-100 dark:border-white/5 rounded-2xl p-6">
             <span className="text-2xl">⚡</span>
             <h3 className="font-heading font-bold text-hit-ink dark:text-hit-cream text-sm mt-3">Швидка доставка</h3>
-            <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-1">Нова Пошта, 1-3 дні</p>
+            <p className="text-hit-muted dark:text-hit-cream/40 text-xs mt-1">Нова Пошта, до 7 днів</p>
           </div>
           <div className="bg-gray-50 dark:bg-hit-blue/30 border border-gray-100 dark:border-white/5 rounded-2xl p-6">
             <span className="text-2xl">🏆</span>

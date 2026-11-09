@@ -58,7 +58,13 @@ router.get('/summary', async (req, res) => {
       raw: true,
     });
 
-    const paidOrders = await Order.count({ where: { ...where, paymentStatus: 'paid' } });
+    const paidWhere = { ...where, paymentStatus: 'paid' };
+    const paidOrders = await Order.count({ where: paidWhere });
+    const paidRevenueResult = await Order.findOne({
+      where: paidWhere,
+      attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('total')), 0), 'paidRevenue']],
+      raw: true,
+    });
 
     const itemsResult = await sequelize.query(`
       SELECT COALESCE(SUM(oi.quantity), 0) as total
@@ -78,6 +84,7 @@ router.get('/summary', async (req, res) => {
       successOrders,
       cancelledOrders,
       paidOrders,
+      paidRevenue: parseFloat(paidRevenueResult?.paidRevenue) || 0,
       revenue: parseFloat(revenueResult.revenue) || 0,
       itemsSold: parseInt(itemsResult[0]?.total) || 0,
       avgCheck: Math.round(avgCheck),

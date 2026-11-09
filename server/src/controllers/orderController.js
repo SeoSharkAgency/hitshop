@@ -221,30 +221,52 @@ exports.updateStatus = async (req, res) => {
     const order = await Order.findByPk(req.params.id);
     if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
 
+    const role = req.adminRole || 'admin';
+    const canOrderStatus = role === 'admin' || role === 'warehouse';
+    const canPaymentStatus = role === 'admin' || role === 'accountant';
+    const canTtn = role === 'admin' || role === 'warehouse';
+
     const { status, paymentStatus, ttnNumber } = req.body;
     const validStatuses = ['new', 'processing', 'shipped', 'delivered', 'cancelled'];
     const validPayment = ['pending', 'paid', 'failed', 'refunded'];
 
-    if (status && !validStatuses.includes(status)) {
-      return res.status(400).json({ error: 'Невірний статус' });
+    if (status !== undefined && status !== null && status !== '') {
+      if (!canOrderStatus) {
+        return res.status(403).json({ error: 'Недостатньо прав для зміни статусу замовлення' });
+      }
+      if (!validStatuses.includes(status)) {
+        return res.status(400).json({ error: 'Невірний статус' });
+      }
     }
-    if (paymentStatus && !validPayment.includes(paymentStatus)) {
-      return res.status(400).json({ error: 'Невірний статус оплати' });
+    if (paymentStatus !== undefined && paymentStatus !== null && paymentStatus !== '') {
+      if (!canPaymentStatus) {
+        return res.status(403).json({ error: 'Недостатньо прав для зміни статусу оплати' });
+      }
+      if (!validPayment.includes(paymentStatus)) {
+        return res.status(400).json({ error: 'Невірний статус оплати' });
+      }
+    }
+    if (ttnNumber !== undefined && !canTtn) {
+      return res.status(403).json({ error: 'Недостатньо прав для зміни ТТН' });
     }
 
-    if (status) order.status = status;
-    if (paymentStatus) order.paymentStatus = paymentStatus;
-    if (ttnNumber !== undefined) order.ttnNumber = ttnNumber ? String(ttnNumber).slice(0, 50) : null;
+    if (status && canOrderStatus) order.status = status;
+    if (paymentStatus && canPaymentStatus) order.paymentStatus = paymentStatus;
+    if (ttnNumber !== undefined && canTtn) {
+      order.ttnNumber = ttnNumber ? String(ttnNumber).slice(0, 50) : null;
+    }
     await order.save();
 
     const changes = [];
-    if (status) changes.push(`статус → ${status}`);
-    if (paymentStatus) changes.push(`оплата → ${paymentStatus}`);
-    if (ttnNumber !== undefined) changes.push(ttnNumber ? `ТТН → ${ttnNumber}` : 'ТТН видалено');
-    logAction(req, 'update', 'order', order.id, `${order.orderNumber}: ${changes.join(', ')}`);
+    if (status && canOrderStatus) changes.push(`статус → ${status}`);
+    if (paymentStatus && canPaymentStatus) changes.push(`оплата → ${paymentStatus}`);
+    if (ttnNumber !== undefined && canTtn) changes.push(ttnNumber ? `ТТН → ${ttnNumber}` : 'ТТН видалено');
+    if (changes.length) {
+      logAction(req, 'update', 'order', order.id, `${order.orderNumber}: ${changes.join(', ')}`);
+    }
 
-    if (status) notifyStatusChange(order, 'status', status, req.adminUsername);
-    if (paymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus, req.adminUsername);
+    if (status && canOrderStatus) notifyStatusChange(order, 'status', status, req.adminUsername);
+    if (paymentStatus && canPaymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus, req.adminUsername);
 
     const fullOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],

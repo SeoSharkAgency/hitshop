@@ -3,7 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { FiTrendingUp, FiShoppingBag, FiDollarSign, FiUsers, FiPackage, FiDownload } from 'react-icons/fi';
+import { FiTrendingUp, FiShoppingBag, FiDollarSign, FiPackage, FiDownload, FiCheckCircle } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../api';
 
@@ -90,6 +90,7 @@ export default function AnalyticsPanel() {
       lines.push(`Успішних:,${summary.successOrders}`);
       lines.push(`Скасованих:,${summary.cancelledOrders}`);
       lines.push(`Оплачених:,${summary.paidOrders}`);
+      lines.push(`Сума оплачених:,${summary.paidRevenue} ₴`);
       lines.push(`Продано одиниць:,${summary.itemsSold}`);
       lines.push(`Середній чек:,${summary.avgCheck} ₴`);
       lines.push('');
@@ -184,11 +185,13 @@ export default function AnalyticsPanel() {
       ) : (
         <>
           {summary && (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
               <StatCard icon={FiDollarSign} label="Виручка" value={formatMoney(summary.revenue)} sub={`${summary.successOrders} замовлень`} />
               <StatCard icon={FiShoppingBag} label="Замовлень" value={summary.totalOrders} sub={`${summary.cancelledOrders} скасовано`} />
+              <StatCard icon={FiCheckCircle} label="Оплачених" value={summary.paidOrders} sub="замовлень" color="text-green-600 dark:text-green-400" />
+              <StatCard icon={FiDollarSign} label="Сума оплачених" value={formatMoney(summary.paidRevenue || 0)} sub="оплачені замовлення" color="text-green-600 dark:text-green-400" />
               <StatCard icon={FiPackage} label="Продано" value={`${summary.itemsSold} шт`} sub="одиниць товару" />
-              <StatCard icon={FiTrendingUp} label="Сер. чек" value={formatMoney(summary.avgCheck)} sub={`${summary.paidOrders} оплачено`} />
+              <StatCard icon={FiTrendingUp} label="Сер. чек" value={formatMoney(summary.avgCheck)} />
             </div>
           )}
 

@@ -99,6 +99,11 @@ export default function OrderStatus() {
               <CopyRow label="Сума" value={`${Number(order.total).toLocaleString('uk-UA')} ₴`} bold />
             </div>
           </div>
+          <div className="bg-hit-gold/15 dark:bg-hit-gold/20 border-2 border-hit-gold rounded-2xl p-4 text-center">
+            <p className="text-hit-ink dark:text-hit-cream text-sm font-heading font-bold leading-snug">
+              Статус оплати оновлюється протягом 12 годин після надходження платежу
+            </p>
+          </div>
         </div>
       )}
 
@@ -182,6 +187,11 @@ export default function OrderStatus() {
       <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5 mb-5">
         <p className="text-gray-400 dark:text-white/40 text-xs uppercase tracking-widest mb-2">статус оплати</p>
         <p className={`text-sm font-medium ${payment.color}`}>{payment.label}</p>
+        {order.paymentStatus === 'pending' && (
+          <p className="mt-3 text-xs font-semibold text-hit-gold dark:text-hit-yellow leading-snug">
+            Статус оплати оновлюється протягом 12 годин після надходження платежу
+          </p>
+        )}
       </div>
 
       <div className="flex flex-wrap gap-3 justify-center mt-8">

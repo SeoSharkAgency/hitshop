@@ -15,16 +15,20 @@ export default function AdminDashboard() {
   const [tab, setTab] = useState(defaultTab);
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
+  const [orderStatusFilter, setOrderStatusFilter] = useState([]);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
   const canProducts = role === 'admin' || role === 'warehouse';
-  const canOrders = role === 'admin' || role === 'accountant';
+  const canOrders = role === 'admin' || role === 'accountant' || role === 'warehouse';
+  const canOrderStatus = role === 'admin' || role === 'warehouse';
+  const canPaymentStatus = role === 'admin' || role === 'accountant';
   const canUsers = role === 'admin';
   const canAnalytics = role === 'admin' || role === 'accountant';
   const canPayment = role === 'admin' || role === 'accountant';
+  const canTtn = role === 'admin' || role === 'warehouse';
 
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
@@ -44,8 +48,35 @@ export default function AdminDashboard() {
   };
 
   const handleStatusChange = async (orderId, field, value) => {
-    try { await api.put(`/orders/${orderId}`, { [field]: value }); toast.success('оновлено ✓'); loadOrders(); }
-    catch { toast.error('помилка'); }
+    if (field === 'status' && !canOrderStatus) {
+      toast.error('Недостатньо прав для зміни статусу замовлення');
+      return;
+    }
+    if (field === 'paymentStatus' && !canPaymentStatus) {
+      toast.error('Недостатньо прав для зміни статусу оплати');
+      return;
+    }
+    try {
+      await api.put(`/orders/${orderId}`, { [field]: value });
+      toast.success('оновлено ✓');
+      loadOrders();
+    } catch (err) {
+      toast.error(err.response?.data?.error || 'помилка');
+    }
+  };
+
+  const ORDER_STATUS_LABELS = {
+    new: 'нове',
+    processing: 'в обробці',
+    shipped: 'відправлено',
+    delivered: 'доставлено',
+    cancelled: 'скасовано',
+  };
+  const PAYMENT_STATUS_LABELS = {
+    pending: 'очікує',
+    paid: 'оплачено',
+    failed: 'відхилено',
+    refunded: 'повернено',
   };
 
   const [ttnModal, setTtnModal] = useState(null);
@@ -352,11 +383,52 @@ export default function AdminDashboard() {
 
       {tab === 'orders' && canOrders && (
         <div>
-          {orders.length === 0 ? (
-            <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">замовлень немає</p>
-          ) : (
+          <div className="mb-4">
+            <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус замовлення</p>
+            <div className="flex flex-wrap gap-1.5">
+              {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => {
+                const active = orderStatusFilter.includes(key);
+                return (
+                  <button
+                    key={key}
+                    type="button"
+                    onClick={() => setOrderStatusFilter((prev) => (
+                      active ? prev.filter((s) => s !== key) : [...prev, key]
+                    ))}
+                    className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
+                      active
+                        ? 'bg-hit-yellow text-[#0a0e1a] border-hit-yellow'
+                        : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                );
+              })}
+              {orderStatusFilter.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setOrderStatusFilter([])}
+                  className="px-3 py-1.5 rounded-full text-[11px] font-medium text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors"
+                >
+                  скинути
+                </button>
+              )}
+            </div>
+          </div>
+          {(() => {
+            const filteredOrders = orderStatusFilter.length
+              ? orders.filter((o) => orderStatusFilter.includes(o.status))
+              : orders;
+            if (orders.length === 0) {
+              return <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">замовлень немає</p>;
+            }
+            if (filteredOrders.length === 0) {
+              return <p className="text-gray-400 dark:text-white/40 text-sm text-center py-10">немає замовлень з обраними статусами</p>;
+            }
+            return (
             <div className="space-y-3">
-              {orders.map((order) => (
+              {filteredOrders.map((order) => (
                 <div key={order.id} className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-5">
                   <div className="flex flex-wrap items-start justify-between gap-3 mb-3">
                     <div>
@@ -390,24 +462,37 @@ export default function AdminDashboard() {
                       ))}
                     </div>
                   )}
-                  <div className="flex flex-wrap gap-3 pt-3 border-t border-gray-200 dark:border-white/5">
-                    <select value={order.status} onChange={(e) => handleStatusChange(order.id, 'status', e.target.value)}
-                      className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
-                      <option value="new">нове</option>
-                      <option value="processing">в обробці</option>
-                      <option value="shipped">відправлено</option>
-                      <option value="delivered">доставлено</option>
-                      <option value="cancelled">скасовано</option>
-                    </select>
-                    <select value={order.paymentStatus} onChange={(e) => handleStatusChange(order.id, 'paymentStatus', e.target.value)}
-                      className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
-                      <option value="pending">очікує</option>
-                      <option value="paid">оплачено</option>
-                      <option value="failed">відхилено</option>
-                      <option value="refunded">повернено</option>
-                    </select>
+                  <div className="flex flex-wrap gap-3 pt-3 border-t border-gray-200 dark:border-white/5 items-center">
+                    {canOrderStatus ? (
+                      <select value={order.status} onChange={(e) => handleStatusChange(order.id, 'status', e.target.value)}
+                        className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
+                        <option value="new">нове</option>
+                        <option value="processing">в обробці</option>
+                        <option value="shipped">відправлено</option>
+                        <option value="delivered">доставлено</option>
+                        <option value="cancelled">скасовано</option>
+                      </select>
+                    ) : (
+                      <span className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-500 dark:text-white/50 text-xs">
+                        статус: {ORDER_STATUS_LABELS[order.status] || order.status}
+                      </span>
+                    )}
+                    {canPaymentStatus ? (
+                      <select value={order.paymentStatus} onChange={(e) => handleStatusChange(order.id, 'paymentStatus', e.target.value)}
+                        className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none">
+                        <option value="pending">очікує</option>
+                        <option value="paid">оплачено</option>
+                        <option value="failed">відхилено</option>
+                        <option value="refunded">повернено</option>
+                      </select>
+                    ) : (
+                      <span className="bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-500 dark:text-white/50 text-xs">
+                        оплата: {PAYMENT_STATUS_LABELS[order.paymentStatus] || order.paymentStatus}
+                      </span>
+                    )}
                   </div>
 
+                  {(canTtn || order.ttnNumber) && (
                   <div className="mt-3 pt-3 border-t border-gray-200 dark:border-white/5">
                     {order.ttnNumber ? (
                       <div className="space-y-1.5">
@@ -421,20 +506,24 @@ export default function AdminDashboard() {
                           >
                             {order.ttnNumber}
                           </a>
-                          <button onClick={() => handleTrackTTN(order.ttnNumber, order.id)}
-                            className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/50 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
-                            статус
-                          </button>
-                          {order.deliveryCityRef && order.deliveryWarehouseRef && (
-                            <button onClick={() => handleRecreateTTN(order)}
-                              className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors">
-                              перестворити
-                            </button>
+                          {canTtn && (
+                            <>
+                              <button onClick={() => handleTrackTTN(order.ttnNumber, order.id)}
+                                className="text-[10px] bg-gray-100 dark:bg-white/10 text-gray-500 dark:text-white/50 px-2 py-0.5 rounded hover:bg-gray-200 dark:hover:bg-white/20 transition-colors">
+                                статус
+                              </button>
+                              {order.deliveryCityRef && order.deliveryWarehouseRef && (
+                                <button onClick={() => handleRecreateTTN(order)}
+                                  className="text-[10px] bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 px-2 py-0.5 rounded hover:bg-yellow-200 dark:hover:bg-yellow-500/30 transition-colors">
+                                  перестворити
+                                </button>
+                              )}
+                              <button onClick={() => handleDeleteTTN(order)}
+                                className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
+                                видалити
+                              </button>
+                            </>
                           )}
-                          <button onClick={() => handleDeleteTTN(order)}
-                            className="text-[10px] bg-red-100 dark:bg-red-500/20 text-red-600 dark:text-red-400 px-2 py-0.5 rounded hover:bg-red-200 dark:hover:bg-red-500/30 transition-colors">
-                            видалити
-                          </button>
                         </div>
                         {trackingInfo[order.id] && (
                           <p className="text-green-600 dark:text-green-400 text-[11px]">
@@ -443,7 +532,7 @@ export default function AdminDashboard() {
                           </p>
                         )}
                       </div>
-                    ) : order.deliveryCityRef && order.deliveryWarehouseRef ? (
+                    ) : canTtn && order.deliveryCityRef && order.deliveryWarehouseRef ? (
                       <div className="space-y-2">
                         <button
                           onClick={() => openTtnModal(order)}
@@ -458,7 +547,7 @@ export default function AdminDashboard() {
                           <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
                         </div>
                       </div>
-                    ) : (
+                    ) : canTtn ? (
                       <div className="space-y-2">
                         <p className="text-gray-300 dark:text-white/20 text-[10px]">НП ref-и відсутні (ручне замовлення)</p>
                         <div className="flex items-center gap-1.5">
@@ -468,12 +557,14 @@ export default function AdminDashboard() {
                           <button onClick={() => handleManualTTN(order.id)} className="text-xs bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-white/70 px-2 py-1 rounded-lg hover:bg-gray-300 dark:hover:bg-white/20 transition-colors">зберегти</button>
                         </div>
                       </div>
-                    )}
+                    ) : null}
                   </div>
+                  )}
                 </div>
               ))}
             </div>
-          )}
+            );
+          })()}
         </div>
       )}
 
