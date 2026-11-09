@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useUser } from '../context/UserContext';
 import api, { getImageUrl } from '../api';
+import Seo from '../components/Seo';
 
 const STATUS_LABELS = {
   new: 'Нове',
@@ -219,6 +220,7 @@ export default function UserCabinet() {
 
   return (
     <div className="pt-24 pb-16 max-w-[1320px] mx-auto px-5">
+      <Seo title="Особистий кабінет" description="Кабінет покупця ФК ХІТ Shop." noindex path="/account" />
       <div className="flex flex-col md:flex-row gap-8">
         <div className="md:w-64 shrink-0">
           <div className="bg-white dark:bg-hit-blue/40 rounded-2xl p-5 border border-gray-100 dark:border-white/5">

@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api from '../api';
 import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
+import Seo from '../components/Seo';
 
 export default function Checkout() {
   const { items, totalPrice, clearCart, getItemPrice } = useCart();
@@ -211,6 +212,7 @@ export default function Checkout() {
 
   return (
     <div className="pt-24 max-w-lg mx-auto px-5 pb-16">
+      <Seo title="Оформлення замовлення" description="Оформлення замовлення в офіційному магазині ФК ХІТ." noindex path="/checkout" />
       <h1 className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-cream mb-6">Оформлення</h1>
 
       <form onSubmit={handleSubmit} className="space-y-4">

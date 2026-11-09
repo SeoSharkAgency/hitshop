@@ -4,6 +4,7 @@ import toast from 'react-hot-toast';
 import api, { getImageUrl } from '../api';
 import { useAuth } from '../context/AuthContext';
 import AnalyticsPanel from '../components/AnalyticsPanel';
+import Seo from '../components/Seo';
 
 const ROLE_LABELS = { admin: 'адмін', accountant: 'бухгалтер', warehouse: 'склад' };
 
@@ -469,6 +470,7 @@ export default function AdminDashboard() {
 
   return (
     <div className="pt-24 max-w-6xl mx-auto px-4 pb-16">
+      <Seo title="Адмін-панель" description="Адмін-панель магазину ФК ХІТ." noindex path="/admin" />
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-3">
           <img src="/hit-logo.png" alt="" className="w-7 h-8 object-contain" />

@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import Seo from '../components/Seo';
 
 export default function AdminLogin() {
   const [username, setUsername] = useState('');
@@ -28,6 +29,7 @@ export default function AdminLogin() {
 
   return (
     <div className="pt-24 min-h-[70vh] flex items-center justify-center px-4">
+      <Seo title="Admin" description="Адмін-панель магазину ФК ХІТ." noindex path="/admin/login" />
       <div className="w-full max-w-sm">
         <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-7">
           <div className="text-center mb-7">

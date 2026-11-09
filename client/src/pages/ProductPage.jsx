@@ -6,6 +6,7 @@ import api, { getImageUrl } from '../api';
 import { useCart } from '../context/CartContext';
 import { useUser } from '../context/UserContext';
 import { resolveBasePrice } from '../utils/pricing';
+import Seo from '../components/Seo';
 
 export default function ProductPage() {
   const { id } = useParams();
@@ -51,6 +52,7 @@ export default function ProductPage() {
   if (!product) {
     return (
       <div className="pt-24 max-w-[1320px] mx-auto px-5 py-20 text-center">
+        <Seo title="Товар не знайдено" description="Товар не знайдено в магазині ФК ХІТ." noindex path={`/product/${id}`} />
         <p className="text-hit-muted dark:text-hit-cream/40">Товар не знайдено</p>
         <Link to="/catalog" className="btn-primary mt-4 inline-block">Каталог</Link>
       </div>
@@ -124,8 +126,22 @@ export default function ProductPage() {
     ...(sizeChart ? [{ id: 'sizeChart', label: 'Розмірна сітка' }] : []),
   ];
 
+  const productDescription = (() => {
+    const raw = (product.description || '').replace(/\s+/g, ' ').trim();
+    if (raw.length > 150) return `${raw.slice(0, 147)}…`;
+    if (raw) return raw;
+    const cat = product.Category?.name ? ` (${product.Category.name})` : '';
+    return `${product.name}${cat} — офіційний магазин ФК ХІТ. Купити з доставкою Новою Поштою.`;
+  })();
+
   return (
     <div className="pt-24 max-w-[1320px] mx-auto px-5 pb-16">
+      <Seo
+        title={product.name}
+        description={productDescription}
+        path={`/product/${product.id}`}
+        image={product.image ? getImageUrl(product.image) : undefined}
+      />
       <Link to="/catalog" className="inline-flex items-center gap-1.5 text-hit-muted dark:text-hit-cream/40 hover:text-hit-blue-700 dark:hover:text-hit-gold mb-6 transition-colors text-xs font-medium">
         <FiArrowLeft size={14} /> Назад до каталогу
       </Link>

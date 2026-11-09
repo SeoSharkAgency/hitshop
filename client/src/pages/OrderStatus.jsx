@@ -4,6 +4,7 @@ import { FiCheckCircle, FiClock, FiTruck, FiPackage, FiXCircle, FiCopy } from 'r
 import toast from 'react-hot-toast';
 import { QRCodeSVG } from 'qrcode.react';
 import api, { getImageUrl } from '../api';
+import Seo from '../components/Seo';
 
 const STATUS_MAP = {
   new: { label: 'Нове', icon: FiClock, color: 'text-blue-500', bg: 'bg-blue-100 dark:bg-blue-500/20' },
@@ -67,6 +68,12 @@ export default function OrderStatus() {
 
   return (
     <div className="pt-24 max-w-lg mx-auto px-4 pb-16">
+      <Seo
+        title={`Замовлення ${order.orderNumber}`}
+        description={`Статус замовлення ${order.orderNumber} у магазині ФК ХІТ.`}
+        noindex
+        path={`/order/${order.orderNumber}`}
+      />
       <div className="text-center mb-8">
         <div className={`w-16 h-16 rounded-full ${status.bg} flex items-center justify-center mx-auto mb-4`}>
           <StatusIcon size={28} className={status.color} />

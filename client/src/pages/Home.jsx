@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import api from '../api';
 import ProductCard from '../components/ProductCard';
+import Seo from '../components/Seo';
 
 export default function Home() {
   const [featured, setFeatured] = useState([]);
@@ -16,6 +17,10 @@ export default function Home() {
 
   return (
     <div className="pt-16">
+      <Seo
+        path="/"
+        description="Офіційний магазин ФК ХІТ — ігрова форма сезону, тренувальний одяг та клубна атрибутика. Одягни кольори чемпіонів."
+      />
       {/* Hero */}
       <section className="relative py-16 md:py-24 overflow-hidden bg-hit-blue">
         <div className="absolute inset-0" style={{ backgroundImage: 'url(/pattern-dark-seamless.jpg)', backgroundSize: '900px', backgroundRepeat: 'repeat', opacity: 0.26 }}></div>

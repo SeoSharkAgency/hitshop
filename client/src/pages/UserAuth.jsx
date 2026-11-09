@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { useUser } from '../context/UserContext';
+import Seo from '../components/Seo';
 
 export default function UserAuth() {
   const [mode, setMode] = useState('login');
@@ -29,6 +30,12 @@ export default function UserAuth() {
 
   return (
     <div className="pt-24 pb-16 max-w-md mx-auto px-5">
+      <Seo
+        title={mode === 'login' ? 'Вхід' : 'Реєстрація'}
+        description={mode === 'login' ? 'Увійти в кабінет покупця ФК ХІТ Shop.' : 'Реєстрація в офіційному магазині ФК ХІТ.'}
+        noindex
+        path="/account/login"
+      />
       <div className="bg-white dark:bg-hit-blue/40 rounded-2xl p-8 border border-gray-100 dark:border-white/5 shadow-[0_18px_44px_rgba(8,29,69,.08)] dark:shadow-[0_18px_44px_rgba(8,29,69,.4)]">
         <div className="text-center mb-6">
           <img src="/hit-logo.png" alt="ФК ХІТ" className="w-12 h-12 object-contain mx-auto mb-3" />

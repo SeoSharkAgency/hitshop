@@ -2,6 +2,7 @@ import { Link } from 'react-router-dom';
 import { FiTrash2, FiMinus, FiPlus } from 'react-icons/fi';
 import { useCart, cartItemKey } from '../context/CartContext';
 import { getImageUrl } from '../api';
+import Seo from '../components/Seo';
 
 export default function Cart() {
   const { items, removeItem, updateQuantity, totalPrice, getItemPrice } = useCart();
@@ -9,6 +10,7 @@ export default function Cart() {
   if (items.length === 0) {
     return (
       <div className="pt-24 max-w-6xl mx-auto px-4 py-20 text-center">
+        <Seo title="Кошик" description="Ваш кошик у магазині ФК ХІТ." noindex path="/cart" />
         <img src="/hit-logo.png" alt="" className="w-14 h-16 object-contain mx-auto mb-5 opacity-15" />
         <h1 className="font-heading font-bold text-lg text-gray-900 dark:text-white mb-2">порожньо</h1>
         <p className="text-gray-400 dark:text-white/40 text-sm mb-6">час щось обрати 👀</p>
@@ -19,6 +21,7 @@ export default function Cart() {
 
   return (
     <div className="pt-24 max-w-2xl mx-auto px-4 pb-16">
+      <Seo title="Кошик" description="Ваш кошик у магазині ФК ХІТ." noindex path="/cart" />
       <h1 className="font-heading font-bold text-2xl text-gray-900 dark:text-white mb-6">Кошик</h1>
 
       <div className="space-y-3">

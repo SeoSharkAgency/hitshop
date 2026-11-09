@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import api from '../api';
 import ProductCard from '../components/ProductCard';
+import Seo from '../components/Seo';
 
 export default function Catalog() {
   const [products, setProducts] = useState([]);
@@ -9,6 +10,7 @@ export default function Catalog() {
   const [loading, setLoading] = useState(true);
   const [searchParams, setSearchParams] = useSearchParams();
   const activeCategory = searchParams.get('category') || '';
+  const activeCategoryName = categories.find((c) => String(c.id) === String(activeCategory))?.name;
 
   useEffect(() => {
     api.get('/categories').then((res) => setCategories(res.data));
@@ -23,11 +25,23 @@ export default function Catalog() {
       .finally(() => setLoading(false));
   }, [activeCategory]);
 
+  const catalogTitle = activeCategoryName ? `${activeCategoryName} — каталог` : 'Каталог';
+  const catalogDescription = activeCategoryName
+    ? `${activeCategoryName} в офіційному магазині ФК ХІТ. Оригінальна клубна атрибутика з доставкою Новою Поштою.`
+    : 'Каталог офіційного магазину ФК ХІТ — форма, одяг та атрибутика клубу. Купуйте онлайн з доставкою по Україні.';
+
   return (
     <div className="pt-24 max-w-[1320px] mx-auto px-5 pb-16">
+      <Seo
+        title={catalogTitle}
+        description={catalogDescription}
+        path={activeCategory ? `/catalog?category=${activeCategory}` : '/catalog'}
+      />
       <div className="mb-8">
         <p className="font-heading font-semibold text-[10px] uppercase tracking-[.2em] text-hit-gold mb-1">Офіційний магазин</p>
-        <h1 className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-cream">Каталог</h1>
+        <h1 className="font-heading font-bold text-2xl text-hit-ink dark:text-hit-cream">
+          {activeCategoryName || 'Каталог'}
+        </h1>
       </div>
 
       {/* Filter pills */}
