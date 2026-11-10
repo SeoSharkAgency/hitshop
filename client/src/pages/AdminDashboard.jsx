@@ -17,7 +17,9 @@ export default function AdminDashboard() {
   const [products, setProducts] = useState([]);
   const [orders, setOrders] = useState([]);
   const [orderStatusFilter, setOrderStatusFilter] = useState([]);
+  const [orderPaymentFilter, setOrderPaymentFilter] = useState([]);
   const [orderPresetFilter, setOrderPresetFilter] = useState('');
+  const [orderSearch, setOrderSearch] = useState('');
   const [exportingOrders, setExportingOrders] = useState(false);
   const [categories, setCategories] = useState([]);
   const [users, setUsers] = useState([]);
@@ -279,15 +281,28 @@ export default function AdminDashboard() {
   const paidProcessingOrders = orders.filter((o) => o.paymentStatus === 'paid' && o.status === 'processing');
 
   const getFilteredOrders = () => {
-    if (orderPresetFilter === 'paid_new') return paidNewOrders;
-    if (orderPresetFilter === 'paid_processing') return paidProcessingOrders;
-    if (orderStatusFilter.length) return orders.filter((o) => orderStatusFilter.includes(o.status));
-    return orders;
+    let list = orders;
+    if (orderPresetFilter === 'paid_new') list = paidNewOrders;
+    else if (orderPresetFilter === 'paid_processing') list = paidProcessingOrders;
+    else {
+      if (canOrderStatus && orderStatusFilter.length) {
+        list = list.filter((o) => orderStatusFilter.includes(o.status));
+      }
+      if (canPaymentStatus && orderPaymentFilter.length) {
+        list = list.filter((o) => orderPaymentFilter.includes(o.paymentStatus));
+      }
+    }
+    const q = orderSearch.trim().toLowerCase();
+    if (q) {
+      list = list.filter((o) => String(o.orderNumber || '').toLowerCase().includes(q));
+    }
+    return list;
   };
 
   const selectPreset = (preset) => {
     setOrderPresetFilter((prev) => (prev === preset ? '' : preset));
     setOrderStatusFilter([]);
+    setOrderPaymentFilter([]);
   };
 
   const toggleStatusFilter = (key) => {
@@ -296,6 +311,27 @@ export default function AdminDashboard() {
       prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]
     ));
   };
+
+  const togglePaymentFilter = (key) => {
+    setOrderPresetFilter('');
+    setOrderPaymentFilter((prev) => (
+      prev.includes(key) ? prev.filter((s) => s !== key) : [...prev, key]
+    ));
+  };
+
+  const clearOrderFilters = () => {
+    setOrderStatusFilter([]);
+    setOrderPaymentFilter([]);
+    setOrderPresetFilter('');
+    setOrderSearch('');
+  };
+
+  const hasActiveOrderFilters = !!(
+    orderStatusFilter.length
+    || orderPaymentFilter.length
+    || orderPresetFilter
+    || orderSearch.trim()
+  );
 
   const exportOrdersCsv = async (params = {}) => {
     setExportingOrders(true);
@@ -320,7 +356,8 @@ export default function AdminDashboard() {
   const exportCurrentOrdersFilter = () => {
     if (orderPresetFilter) return exportOrdersCsv({ preset: orderPresetFilter });
     const params = {};
-    if (orderStatusFilter.length) params.status = orderStatusFilter.join(',');
+    if (canOrderStatus && orderStatusFilter.length) params.status = orderStatusFilter.join(',');
+    if (canPaymentStatus && orderPaymentFilter.length) params.paymentStatus = orderPaymentFilter.join(',');
     return exportOrdersCsv(params);
   };
 
@@ -588,6 +625,29 @@ export default function AdminDashboard() {
         <div>
           <div className="mb-4 space-y-3">
             <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex-1 min-w-[200px] max-w-sm">
+                <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Пошук</p>
+                <input
+                  type="text"
+                  value={orderSearch}
+                  onChange={(e) => setOrderSearch(e.target.value)}
+                  placeholder="код замовлення"
+                  className="w-full bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-xl px-3 py-2 text-gray-900 dark:text-white text-xs placeholder-gray-400 dark:placeholder-white/30 focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none"
+                />
+              </div>
+              {canQueue && (
+                <button
+                  type="button"
+                  onClick={exportCurrentOrdersFilter}
+                  disabled={exportingOrders}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all disabled:opacity-50 self-end"
+                >
+                  <FiDownload size={12} /> {exportingOrders ? '...' : 'CSV для відправки'}
+                </button>
+              )}
+            </div>
+
+            {canQueue && (
               <div>
                 <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Швидкий фільтр</p>
                 <div className="flex flex-wrap gap-1.5">
@@ -610,48 +670,67 @@ export default function AdminDashboard() {
                   ))}
                 </div>
               </div>
-              {canQueue && (
-                <button
-                  type="button"
-                  onClick={exportCurrentOrdersFilter}
-                  disabled={exportingOrders}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all disabled:opacity-50"
-                >
-                  <FiDownload size={12} /> {exportingOrders ? '...' : 'CSV для відправки'}
-                </button>
-              )}
-            </div>
-            <div>
-              <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус замовлення</p>
-              <div className="flex flex-wrap gap-1.5">
-                {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => {
-                  const active = !orderPresetFilter && orderStatusFilter.includes(key);
-                  return (
-                    <button
-                      key={key}
-                      type="button"
-                      onClick={() => toggleStatusFilter(key)}
-                      className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
-                        active
-                          ? 'bg-hit-yellow text-[#0a0e1a] border-hit-yellow'
-                          : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-                {(orderStatusFilter.length > 0 || orderPresetFilter) && (
-                  <button
-                    type="button"
-                    onClick={() => { setOrderStatusFilter([]); setOrderPresetFilter(''); }}
-                    className="px-3 py-1.5 rounded-full text-[11px] font-medium text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors"
-                  >
-                    скинути
-                  </button>
-                )}
+            )}
+
+            {canOrderStatus && (
+              <div>
+                <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус замовлення</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(ORDER_STATUS_LABELS).map(([key, label]) => {
+                    const active = !orderPresetFilter && orderStatusFilter.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => toggleStatusFilter(key)}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
+                          active
+                            ? 'bg-hit-yellow text-[#0a0e1a] border-hit-yellow'
+                            : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
-            </div>
+            )}
+
+            {canPaymentStatus && (
+              <div>
+                <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Статус оплати</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {Object.entries(PAYMENT_STATUS_LABELS).map(([key, label]) => {
+                    const active = !orderPresetFilter && orderPaymentFilter.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => togglePaymentFilter(key)}
+                        className={`px-3 py-1.5 rounded-full text-[11px] font-medium transition-all border ${
+                          active
+                            ? 'bg-hit-yellow text-[#0a0e1a] border-hit-yellow'
+                            : 'bg-gray-100 dark:bg-white/5 text-gray-500 dark:text-white/50 border-gray-200 dark:border-white/10 hover:border-gray-300 dark:hover:border-white/20'
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {hasActiveOrderFilters && (
+              <button
+                type="button"
+                onClick={clearOrderFilters}
+                className="px-3 py-1.5 rounded-full text-[11px] font-medium text-gray-400 dark:text-white/40 hover:text-gray-600 dark:hover:text-white/70 transition-colors"
+              >
+                скинути фільтри
+              </button>
+            )}
           </div>
           {(() => {
             const filteredOrders = getFilteredOrders();
