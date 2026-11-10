@@ -38,7 +38,8 @@ function formatPeriodLabel(period, groupBy) {
   return period;
 }
 
-export default function AnalyticsPanel() {
+export default function AnalyticsPanel({ role = 'admin' }) {
+  const isBoss = role === 'admin';
   const [period, setPeriod] = useState('month');
   const [customFrom, setCustomFrom] = useState('');
   const [customTo, setCustomTo] = useState('');
@@ -47,8 +48,11 @@ export default function AnalyticsPanel() {
   const [topProducts, setTopProducts] = useState([]);
   const [topSizes, setTopSizes] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [bossDaily, setBossDaily] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [exportingBoss, setExportingBoss] = useState(false);
   const [view, setView] = useState('overview');
+  const [expandedDay, setExpandedDay] = useState(null);
 
   const params = period === 'custom'
     ? `?period=custom&from=${customFrom}&to=${customTo}`
@@ -57,21 +61,25 @@ export default function AnalyticsPanel() {
   const loadData = useCallback(() => {
     if (period === 'custom' && (!customFrom || !customTo)) return;
     setLoading(true);
-    Promise.all([
+    const requests = [
       api.get(`/analytics/summary${params}`),
       api.get(`/analytics/chart${params}`),
       api.get(`/analytics/top-products${params}&limit=10`),
       api.get(`/analytics/top-sizes${params}`),
       api.get(`/analytics/categories${params}`),
-    ]).then(([s, c, tp, ts, cat]) => {
+    ];
+    if (isBoss) requests.push(api.get(`/analytics/boss-daily${params}`));
+
+    Promise.all(requests).then(([s, c, tp, ts, cat, boss]) => {
       setSummary(s.data);
       setChart(c.data);
       setTopProducts(tp.data);
       setTopSizes(ts.data);
       setCategories(cat.data);
+      setBossDaily(boss?.data || null);
     }).catch(() => toast.error('Помилка завантаження аналітики'))
       .finally(() => setLoading(false));
-  }, [period, customFrom, customTo]);
+  }, [period, customFrom, customTo, isBoss]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
@@ -134,6 +142,25 @@ export default function AnalyticsPanel() {
     toast.success('Звіт завантажено');
   };
 
+  const exportBossReport = async () => {
+    setExportingBoss(true);
+    try {
+      const res = await api.get(`/analytics/boss-report${params}`, { responseType: 'blob' });
+      const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `hitshop-boss-report-${period}-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success('Звіт для шефа завантажено');
+    } catch {
+      toast.error('Помилка експорту звіту');
+    } finally {
+      setExportingBoss(false);
+    }
+  };
+
   const pillClass = (active) => `px-3 py-1.5 rounded-full text-[11px] font-medium transition-all cursor-pointer ${
     active
       ? 'bg-hit-yellow text-[#0a0e1a]'
@@ -165,9 +192,20 @@ export default function AnalyticsPanel() {
             {p.label}
           </button>
         ))}
-        <button onClick={exportCSV} className="ml-auto flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all">
-          <FiDownload size={12} /> CSV
-        </button>
+        <div className="ml-auto flex flex-wrap gap-1.5">
+          {isBoss && (
+            <button
+              onClick={exportBossReport}
+              disabled={exportingBoss}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-hit-yellow text-[#0a0e1a] hover:opacity-90 transition-all disabled:opacity-50"
+            >
+              <FiDownload size={12} /> {exportingBoss ? '...' : 'Звіт для шефа'}
+            </button>
+          )}
+          <button onClick={exportCSV} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-green-100 text-green-700 dark:bg-green-500/20 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-500/30 transition-all">
+            <FiDownload size={12} /> CSV
+          </button>
+        </div>
       </div>
 
       {period === 'custom' && (
@@ -200,6 +238,7 @@ export default function AnalyticsPanel() {
             {viewPill('products', 'Топ товари')}
             {viewPill('categories', 'Категорії')}
             {viewPill('sizes', 'Розміри')}
+            {isBoss && viewPill('boss', 'Звіт для шефа')}
           </div>
 
           {view === 'overview' && chart && (
@@ -361,6 +400,83 @@ export default function AnalyticsPanel() {
                     ))}
                   </div>
                 </>
+              )}
+            </div>
+          )}
+
+          {view === 'boss' && isBoss && (
+            <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+                <div>
+                  <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider">
+                    Оплачені замовлення по днях
+                  </p>
+                  {bossDaily && (
+                    <p className="text-gray-400 dark:text-white/30 text-[11px] mt-1">
+                      {bossDaily.paidOrders} оплачених · {formatMoney(bossDaily.paidRevenue || 0)}
+                    </p>
+                  )}
+                </div>
+                <button
+                  onClick={exportBossReport}
+                  disabled={exportingBoss || !bossDaily?.paidOrders}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-hit-yellow text-[#0a0e1a] hover:opacity-90 transition-all disabled:opacity-50"
+                >
+                  <FiDownload size={12} /> {exportingBoss ? '...' : 'Завантажити CSV'}
+                </button>
+              </div>
+
+              {!bossDaily || bossDaily.days.length === 0 ? (
+                <p className="text-gray-400 dark:text-white/30 text-sm text-center py-10">
+                  Немає оплачених замовлень за цей період
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {bossDaily.days.map((day) => {
+                    const open = expandedDay === day.day;
+                    return (
+                      <div key={day.day} className="border border-gray-200 dark:border-white/10 rounded-xl overflow-hidden">
+                        <button
+                          type="button"
+                          onClick={() => setExpandedDay(open ? null : day.day)}
+                          className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-white dark:bg-white/5 hover:bg-gray-50 dark:hover:bg-white/10 transition-colors text-left"
+                        >
+                          <span className="text-gray-900 dark:text-white text-sm font-medium">{day.dayLabel}</span>
+                          <span className="text-xs text-gray-500 dark:text-white/50">
+                            {day.ordersCount} замовл. · <span className="text-hit-blue dark:text-hit-yellow font-medium">{formatMoney(day.totalSum)}</span>
+                          </span>
+                        </button>
+                        {open && (
+                          <div className="px-4 pb-4 space-y-3 border-t border-gray-100 dark:border-white/5 pt-3">
+                            {day.orders.map((order) => (
+                              <div key={order.id} className="bg-gray-50 dark:bg-black/20 rounded-lg p-3">
+                                <div className="flex flex-wrap justify-between gap-2 mb-2">
+                                  <div>
+                                    <p className="text-gray-900 dark:text-white text-xs font-semibold">{order.orderNumber}</p>
+                                    <p className="text-gray-500 dark:text-white/50 text-[11px] mt-0.5">
+                                      {order.customerName} · {order.customerPhone}
+                                    </p>
+                                    {order.deliveryAddress && (
+                                      <p className="text-gray-400 dark:text-white/40 text-[11px] mt-0.5">📦 {order.deliveryAddress}</p>
+                                    )}
+                                  </div>
+                                  <p className="text-hit-blue dark:text-hit-yellow text-xs font-bold">
+                                    {formatMoney(order.total)}
+                                  </p>
+                                </div>
+                                <div className="space-y-0.5 whitespace-pre-line text-[11px] text-gray-600 dark:text-white/60">
+                                  {order.items.map((item, i) => (
+                                    <p key={i}>{i + 1}) {item.line}</p>
+                                  ))}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           )}

@@ -824,7 +824,7 @@ export default function AdminDashboard() {
       {tab === 'users' && canUsers && <UsersPanel users={users} onReload={loadUsers} />}
       {tab === 'customers' && canUsers && <CustomersPanel />}
       {tab === 'logs' && canUsers && <AuditLogsPanel />}
-      {tab === 'analytics' && canAnalytics && <AnalyticsPanel />}
+      {tab === 'analytics' && canAnalytics && <AnalyticsPanel role={role} />}
       {tab === 'payment' && canPayment && (
         <div className="space-y-6">
           <PaymentSettingsPanel />
