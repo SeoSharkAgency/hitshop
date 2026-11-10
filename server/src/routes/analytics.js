@@ -437,11 +437,15 @@ router.get('/boss-report', requireRole('admin'), async (req, res) => {
       'Примітки',
     ].map(escapeCsv).join(','));
 
+    let lastDayKey = null;
     for (const order of orders) {
+      const key = dayKey(order.createdAt);
+      const dayCell = key !== lastDayKey ? dayLabelUa(order.createdAt) : '';
+      lastDayKey = key;
       const items = order.items || [];
       const itemsText = items.map((item, i) => `${i + 1}) ${formatOrderItem(item)}`).join('\n');
       lines.push([
-        dayLabelUa(order.createdAt),
+        dayCell,
         order.orderNumber,
         order.createdAt ? new Date(order.createdAt).toLocaleString('uk-UA') : '',
         order.customerName || '',
