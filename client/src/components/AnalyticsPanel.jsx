@@ -83,6 +83,10 @@ export default function AnalyticsPanel({ role = 'admin' }) {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    setExpandedDay(null);
+  }, [period, customFrom, customTo]);
+
   const exportCSV = () => {
     const lines = ['\ufeff'];
 
@@ -406,7 +410,7 @@ export default function AnalyticsPanel({ role = 'admin' }) {
 
           {view === 'boss' && isBoss && (
             <div className="bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-2xl p-4">
-              <div className="flex flex-wrap items-center justify-between gap-2 mb-4">
+              <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
                 <div>
                   <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider">
                     Оплачені замовлення по днях
@@ -414,19 +418,60 @@ export default function AnalyticsPanel({ role = 'admin' }) {
                   {bossDaily && (
                     <p className="text-gray-400 dark:text-white/30 text-[11px] mt-1">
                       {bossDaily.paidOrders} оплачених · {formatMoney(bossDaily.paidRevenue || 0)}
+                      {' · '}
+                      {period === 'custom' && customFrom && customTo
+                        ? `${customFrom} — ${customTo}`
+                        : (PERIODS.find((p) => p.value === period)?.label || period)}
                     </p>
                   )}
                 </div>
                 <button
                   onClick={exportBossReport}
-                  disabled={exportingBoss || !bossDaily?.paidOrders}
+                  disabled={exportingBoss || (period === 'custom' && (!customFrom || !customTo)) || !bossDaily?.paidOrders}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium bg-hit-yellow text-[#0a0e1a] hover:opacity-90 transition-all disabled:opacity-50"
                 >
                   <FiDownload size={12} /> {exportingBoss ? '...' : 'Завантажити CSV'}
                 </button>
               </div>
 
-              {!bossDaily || bossDaily.days.length === 0 ? (
+              <div className="mb-4">
+                <p className="text-gray-400 dark:text-white/40 text-[10px] uppercase tracking-wider mb-2">Період звіту</p>
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {PERIODS.map((p) => (
+                    <button
+                      key={p.value}
+                      type="button"
+                      onClick={() => setPeriod(p.value)}
+                      className={pillClass(period === p.value)}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
+                {period === 'custom' && (
+                  <div className="flex flex-wrap gap-2 items-center">
+                    <input
+                      type="date"
+                      value={customFrom}
+                      onChange={(e) => setCustomFrom(e.target.value)}
+                      className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none"
+                    />
+                    <span className="text-gray-400 text-xs">—</span>
+                    <input
+                      type="date"
+                      value={customTo}
+                      onChange={(e) => setCustomTo(e.target.value)}
+                      className="bg-white dark:bg-white/5 border border-gray-200 dark:border-white/10 rounded-lg px-3 py-1.5 text-gray-900 dark:text-white text-xs focus:border-hit-blue dark:focus:border-hit-yellow/50 focus:outline-none"
+                    />
+                  </div>
+                )}
+              </div>
+
+              {period === 'custom' && (!customFrom || !customTo) ? (
+                <p className="text-gray-400 dark:text-white/30 text-sm text-center py-10">
+                  Оберіть дати «від» і «до» для звіту
+                </p>
+              ) : !bossDaily || bossDaily.days.length === 0 ? (
                 <p className="text-gray-400 dark:text-white/30 text-sm text-center py-10">
                   Немає оплачених замовлень за цей період
                 </p>
