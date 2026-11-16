@@ -102,6 +102,8 @@ exports.update = async (req, res) => {
 
     const oldSizes = product.sizes || {};
     const oldStock = product.stock;
+    const role = req.adminRole || 'admin';
+    const isLimited = role === 'accountant';
 
     const {
       name, description, price, memberPrice, categoryId, sizes, stock, featured, characteristics, sizeChart,
@@ -110,18 +112,6 @@ exports.update = async (req, res) => {
     const updateData = {};
 
     if (name) updateData.name = name;
-    if (description !== undefined) updateData.description = description;
-    if (price) updateData.price = price;
-    if (memberPrice !== undefined) {
-      updateData.memberPrice = memberPrice === '' || memberPrice == null ? null : parseFloat(memberPrice);
-    }
-    if (categoryId) updateData.categoryId = categoryId;
-    if (characteristics !== undefined) {
-      updateData.characteristics = characteristics && characteristics.trim() ? JSON.parse(characteristics) : null;
-    }
-    if (sizeChart !== undefined) {
-      updateData.sizeChart = sizeChart && sizeChart.trim() ? JSON.parse(sizeChart) : null;
-    }
     if (sizes) {
       const parsed = JSON.parse(sizes);
       if (Array.isArray(parsed)) {
@@ -135,20 +125,35 @@ exports.update = async (req, res) => {
     } else if (stock !== undefined) {
       updateData.stock = parseInt(stock);
     }
-    if (featured !== undefined) updateData.featured = featured === 'true' || featured === true;
-    if (printNumberEnabled !== undefined) {
-      updateData.printNumberEnabled = printNumberEnabled === 'true' || printNumberEnabled === true;
+
+    if (!isLimited) {
+      if (description !== undefined) updateData.description = description;
+      if (price) updateData.price = price;
+      if (memberPrice !== undefined) {
+        updateData.memberPrice = memberPrice === '' || memberPrice == null ? null : parseFloat(memberPrice);
+      }
+      if (categoryId) updateData.categoryId = categoryId;
+      if (characteristics !== undefined) {
+        updateData.characteristics = characteristics && characteristics.trim() ? JSON.parse(characteristics) : null;
+      }
+      if (sizeChart !== undefined) {
+        updateData.sizeChart = sizeChart && sizeChart.trim() ? JSON.parse(sizeChart) : null;
+      }
+      if (featured !== undefined) updateData.featured = featured === 'true' || featured === true;
+      if (printNumberEnabled !== undefined) {
+        updateData.printNumberEnabled = printNumberEnabled === 'true' || printNumberEnabled === true;
+      }
+      if (printNumberPrice !== undefined) {
+        updateData.printNumberPrice = Math.max(0, parseFloat(printNumberPrice) || 0);
+      }
+      if (printNameEnabled !== undefined) {
+        updateData.printNameEnabled = printNameEnabled === 'true' || printNameEnabled === true;
+      }
+      if (printNamePrice !== undefined) {
+        updateData.printNamePrice = Math.max(0, parseFloat(printNamePrice) || 0);
+      }
+      if (req.file) updateData.image = `/uploads/${req.file.filename}`;
     }
-    if (printNumberPrice !== undefined) {
-      updateData.printNumberPrice = Math.max(0, parseFloat(printNumberPrice) || 0);
-    }
-    if (printNameEnabled !== undefined) {
-      updateData.printNameEnabled = printNameEnabled === 'true' || printNameEnabled === true;
-    }
-    if (printNamePrice !== undefined) {
-      updateData.printNamePrice = Math.max(0, parseFloat(printNamePrice) || 0);
-    }
-    if (req.file) updateData.image = `/uploads/${req.file.filename}`;
 
     await product.update(updateData);
 

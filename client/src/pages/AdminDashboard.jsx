@@ -26,7 +26,8 @@ export default function AdminDashboard() {
   const [showForm, setShowForm] = useState(false);
   const [editingProduct, setEditingProduct] = useState(null);
 
-  const canProducts = role === 'admin' || role === 'warehouse';
+  const canProducts = role === 'admin' || role === 'warehouse' || role === 'accountant';
+  const canCreateProduct = role === 'admin' || role === 'warehouse' || role === 'accountant';
   const canOrders = role === 'admin' || role === 'accountant' || role === 'warehouse';
   const canOrderStatus = role === 'admin' || role === 'warehouse' || role === 'accountant';
   const canPaymentStatus = role === 'admin' || role === 'accountant';
@@ -35,6 +36,7 @@ export default function AdminDashboard() {
   const canPayment = role === 'admin' || role === 'accountant';
   const canTtn = role === 'admin' || role === 'warehouse';
   const canQueue = role === 'admin' || role === 'warehouse';
+  const productEditLimited = role === 'accountant';
 
   useEffect(() => {
     if (canProducts) { loadProducts(); loadCategories(); }
@@ -577,14 +579,22 @@ export default function AdminDashboard() {
       {tab === 'products' && canProducts && (
         <div>
           <div className="flex justify-between items-center mb-5">
-            <p className="text-gray-400 dark:text-white/40 text-xs">{products.length} товарів</p>
-            <button onClick={() => { setEditingProduct(null); setShowForm(true); }} className="btn-primary flex items-center gap-1.5 text-xs">
-              <FiPlus size={13} /> додати
-            </button>
+            <p className="text-gray-400 dark:text-white/40 text-xs">
+              {products.length} товарів
+              {productEditLimited && <span className="ml-2">· назва, розміри, наявність; можна створювати</span>}
+            </p>
+            {canCreateProduct && (
+              <button onClick={() => { setEditingProduct(null); setShowForm(true); }} className="btn-primary flex items-center gap-1.5 text-xs">
+                <FiPlus size={13} /> додати
+              </button>
+            )}
           </div>
 
           {showForm && (
-            <ProductForm product={editingProduct} categories={categories}
+            <ProductForm
+              product={editingProduct}
+              categories={categories}
+              limited={productEditLimited}
               onClose={() => { setShowForm(false); setEditingProduct(null); }}
               onSaved={() => { setShowForm(false); setEditingProduct(null); loadProducts(); }}
             />
@@ -619,7 +629,7 @@ export default function AdminDashboard() {
                   <button onClick={() => { setEditingProduct(product); setShowForm(true); }} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-hit-blue dark:hover:text-hit-yellow transition-colors">
                     <FiEdit2 size={12} />
                   </button>
-                  {role === 'admin' && (
+                  {(role === 'admin' || role === 'accountant') && (
                     <button onClick={() => handleDeleteProduct(product.id)} className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/5 flex items-center justify-center text-gray-400 dark:text-white/40 hover:text-red-400 transition-colors">
                       <FiTrash2 size={12} />
                     </button>
@@ -1839,7 +1849,7 @@ function AuditLogsPanel() {
   );
 }
 
-function ProductForm({ product, categories, onClose, onSaved }) {
+function ProductForm({ product, categories, onClose, onSaved, limited = false }) {
   const parseSizes = (raw) => {
     if (!raw) return [];
     const parsed = typeof raw === 'string' ? JSON.parse(raw) : raw;
@@ -1905,34 +1915,14 @@ function ProductForm({ product, categories, onClose, onSaved }) {
     setSizeRows(rows);
   };
 
+  const isCreate = !product;
+  const showCreateBasics = limited && isCreate;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     const formData = new FormData();
     formData.append('name', form.name);
-    formData.append('description', form.description);
-    formData.append('price', form.price);
-    formData.append('memberPrice', form.memberPrice === '' ? '' : form.memberPrice);
-    formData.append('categoryId', form.categoryId);
-    formData.append('featured', form.featured);
-    formData.append('printNumberEnabled', form.printNumberEnabled);
-    formData.append('printNumberPrice', form.printNumberPrice === '' ? 0 : form.printNumberPrice);
-    formData.append('printNameEnabled', form.printNameEnabled);
-    formData.append('printNamePrice', form.printNamePrice === '' ? 0 : form.printNamePrice);
-
-    if (charRows.length > 0) {
-      const charsObj = {};
-      charRows.forEach(r => { if (r.key.trim()) charsObj[r.key.trim()] = r.value; });
-      formData.append('characteristics', JSON.stringify(charsObj));
-    } else {
-      formData.append('characteristics', '');
-    }
-
-    if (sizeChartEnabled && sizeChartRows.length > 0) {
-      formData.append('sizeChart', JSON.stringify({ headers: sizeChartHeaders, rows: sizeChartRows }));
-    } else {
-      formData.append('sizeChart', '');
-    }
 
     if (sizeRows.length > 0) {
       const sizesObj = {};
@@ -1944,7 +1934,42 @@ function ProductForm({ product, categories, onClose, onSaved }) {
       formData.append('stock', 0);
     }
 
-    if (image) formData.append('image', image);
+    if (limited) {
+      if (isCreate) {
+        formData.append('price', form.price);
+        formData.append('categoryId', form.categoryId);
+        formData.append('description', '');
+        formData.append('memberPrice', '');
+        formData.append('featured', false);
+      }
+    } else {
+      formData.append('description', form.description);
+      formData.append('price', form.price);
+      formData.append('memberPrice', form.memberPrice === '' ? '' : form.memberPrice);
+      formData.append('categoryId', form.categoryId);
+      formData.append('featured', form.featured);
+      formData.append('printNumberEnabled', form.printNumberEnabled);
+      formData.append('printNumberPrice', form.printNumberPrice === '' ? 0 : form.printNumberPrice);
+      formData.append('printNameEnabled', form.printNameEnabled);
+      formData.append('printNamePrice', form.printNamePrice === '' ? 0 : form.printNamePrice);
+
+      if (charRows.length > 0) {
+        const charsObj = {};
+        charRows.forEach(r => { if (r.key.trim()) charsObj[r.key.trim()] = r.value; });
+        formData.append('characteristics', JSON.stringify(charsObj));
+      } else {
+        formData.append('characteristics', '');
+      }
+
+      if (sizeChartEnabled && sizeChartRows.length > 0) {
+        formData.append('sizeChart', JSON.stringify({ headers: sizeChartHeaders, rows: sizeChartRows }));
+      } else {
+        formData.append('sizeChart', '');
+      }
+
+      if (image) formData.append('image', image);
+    }
+
     try {
       if (product) { await api.put(`/products/${product.id}`, formData); toast.success('збережено ✓'); }
       else { await api.post('/products', formData); toast.success('додано ✓'); }
@@ -1956,11 +1981,23 @@ function ProductForm({ product, categories, onClose, onSaved }) {
   return (
     <div className="bg-gray-50 dark:bg-white/5 border border-hit-yellow/30 rounded-2xl p-5 mb-5">
       <p className="font-heading font-semibold text-gray-900 dark:text-white text-sm mb-4">
-        {product ? 'редагувати' : 'новий товар'}
+        {product ? (limited ? 'редагувати назву / наявність' : 'редагувати') : 'новий товар'}
       </p>
       <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-3">
         <div className="md:col-span-2"><input type="text" placeholder="назва" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required className={inputClass} /></div>
+        {showCreateBasics && (
+          <>
+            <input type="number" placeholder="ціна для гостя" value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} required className={inputClass} />
+            <select value={form.categoryId} onChange={(e) => setForm({ ...form, categoryId: e.target.value })} required className={inputClass}>
+              <option value="">категорія</option>
+              {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+            </select>
+          </>
+        )}
+        {!limited && (
         <div className="md:col-span-2"><textarea placeholder="опис" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className={`${inputClass} resize-none`} /></div>
+        )}
+        {!limited && (
         <div className="md:col-span-2">
           <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider mb-2">характеристики</p>
           {charRows.length > 0 && (
@@ -1991,6 +2028,7 @@ function ProductForm({ product, categories, onClose, onSaved }) {
           <option value="">категорія</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        )}
 
         <div className="md:col-span-2">
           <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider mb-2">розміри та кількість</p>
@@ -2021,6 +2059,8 @@ function ProductForm({ product, categories, onClose, onSaved }) {
           </div>
         </div>
 
+        {!limited && (
+        <>
         {/* Розмірна сітка */}
         <div className="md:col-span-2">
           <label className="flex items-center gap-2 text-gray-500 dark:text-white/50 text-xs cursor-pointer mb-2">
@@ -2098,6 +2138,8 @@ function ProductForm({ product, categories, onClose, onSaved }) {
             )}
           </div>
         </div>
+        </>
+        )}
         <div className="md:col-span-2 flex gap-2 mt-1">
           <button type="submit" disabled={loading} className="btn-primary text-xs disabled:opacity-50">{loading ? '...' : product ? 'зберегти' : 'додати'}</button>
           <button type="button" onClick={onClose} className="btn-secondary text-xs">скасувати</button>
