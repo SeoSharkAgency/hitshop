@@ -19,9 +19,12 @@ jobs:
           key: ${{ secrets.SSH_KEY }}
 
           script: |
+            set -euo pipefail
             cd /var/www/hitshop
 
-            git pull origin master
+            git fetch origin master
+            git reset --hard origin/master
+            git log -1 --oneline
 
             cd server
             npm install
@@ -29,6 +32,9 @@ jobs:
             cd ../client
             npm install
             npm run build
+            test -f dist/index.html
+            ls -la dist/index.html
+            echo "CLIENT_BUILD_OK $(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
             cd ../server
             pm2 restart hitshop-api

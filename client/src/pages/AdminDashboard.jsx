@@ -1995,9 +1995,8 @@ function ProductForm({ product, categories, onClose, onSaved, limited = false })
           </>
         )}
         {!limited && (
+        <>
         <div className="md:col-span-2"><textarea placeholder="опис" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={2} className={`${inputClass} resize-none`} /></div>
-        )}
-        {!limited && (
         <div className="md:col-span-2">
           <p className="text-gray-500 dark:text-white/50 text-xs uppercase tracking-wider mb-2">характеристики</p>
           {charRows.length > 0 && (
@@ -2028,6 +2027,7 @@ function ProductForm({ product, categories, onClose, onSaved, limited = false })
           <option value="">категорія</option>
           {categories.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
         </select>
+        </>
         )}
 
         <div className="md:col-span-2">
