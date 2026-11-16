@@ -341,7 +341,7 @@ exports.updateStatus = async (req, res) => {
     if (!order) return res.status(404).json({ error: 'Замовлення не знайдено' });
 
     const role = req.adminRole || 'admin';
-    const canOrderStatus = role === 'admin' || role === 'warehouse';
+    const canOrderStatus = role === 'admin' || role === 'warehouse' || role === 'accountant';
     const canPaymentStatus = role === 'admin' || role === 'accountant';
     const canTtn = role === 'admin' || role === 'warehouse';
 

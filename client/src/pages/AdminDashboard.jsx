@@ -28,7 +28,7 @@ export default function AdminDashboard() {
 
   const canProducts = role === 'admin' || role === 'warehouse';
   const canOrders = role === 'admin' || role === 'accountant' || role === 'warehouse';
-  const canOrderStatus = role === 'admin' || role === 'warehouse';
+  const canOrderStatus = role === 'admin' || role === 'warehouse' || role === 'accountant';
   const canPaymentStatus = role === 'admin' || role === 'accountant';
   const canUsers = role === 'admin';
   const canAnalytics = role === 'admin' || role === 'accountant';
