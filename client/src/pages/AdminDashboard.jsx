@@ -384,15 +384,25 @@ export default function AdminDashboard() {
         </div>
       </div>
       {order.items?.length > 0 && (
-        <div className="mb-3 space-y-0.5">
-          {order.items.map((item, i) => (
-            <p key={i} className="text-gray-400 dark:text-white/40 text-xs">
-              {item.Product?.name} {item.size && `(${item.size})`}
-              {item.printNumber && ` №${item.printNumber}`}
-              {item.printName && ` «${item.printName}»`}
-              {' '}× {item.quantity}
-            </p>
-          ))}
+        <div className="mb-3 space-y-1">
+          {order.items.map((item, i) => {
+            const unitPrice = Number(item.price) || 0;
+            const lineTotal = unitPrice * (Number(item.quantity) || 0);
+            return (
+              <div key={i} className="flex items-start justify-between gap-3 text-xs">
+                <p className="text-gray-500 dark:text-white/50 min-w-0">
+                  {item.Product?.name} {item.size && `(${item.size})`}
+                  {item.printNumber && ` №${item.printNumber}`}
+                  {item.printName && ` «${item.printName}»`}
+                  {' '}× {item.quantity}
+                  <span className="text-gray-400 dark:text-white/30"> · {unitPrice.toLocaleString('uk-UA')} ₴</span>
+                </p>
+                <span className="text-gray-900 dark:text-white font-medium flex-shrink-0">
+                  {lineTotal.toLocaleString('uk-UA')} ₴
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
       <div className="flex flex-wrap gap-3 pt-3 border-t border-gray-200 dark:border-white/5 items-center">
