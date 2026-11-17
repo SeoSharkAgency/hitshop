@@ -30,11 +30,18 @@ function getOrderTrackingUrl(orderNumber) {
 }
 
 function notifyNewOrder(order) {
-  const items = order.items?.map(i =>
-    `  • ${i.Product?.name || 'товар'} ${i.size ? `(${i.size})` : ''}` +
-    `${i.printNumber ? ` №${i.printNumber}` : ''}` +
-    `${i.printName ? ` «${i.printName}»` : ''} × ${i.quantity}`
-  ).join('\n') || '';
+  const items = order.items?.map((i) => {
+    const unitPrice = Number(i.price) || 0;
+    const qty = Number(i.quantity) || 0;
+    const lineTotal = unitPrice * qty;
+    return (
+      `  • ${i.Product?.name || 'товар'} ${i.size ? `(${i.size})` : ''}` +
+      `${i.printNumber ? ` №${i.printNumber}` : ''}` +
+      `${i.printName ? ` «${i.printName}»` : ''} × ${qty}` +
+      ` — ${unitPrice.toLocaleString('uk-UA')} ₴` +
+      (qty > 1 ? ` = ${lineTotal.toLocaleString('uk-UA')} ₴` : '')
+    );
+  }).join('\n') || '';
 
   const trackingUrl = getOrderTrackingUrl(order.orderNumber);
 
