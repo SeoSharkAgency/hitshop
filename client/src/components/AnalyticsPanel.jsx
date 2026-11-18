@@ -3,7 +3,7 @@ import {
   BarChart, Bar, LineChart, Line, PieChart, Pie, Cell,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend,
 } from 'recharts';
-import { FiTrendingUp, FiShoppingBag, FiDollarSign, FiPackage, FiDownload, FiCheckCircle } from 'react-icons/fi';
+import { FiTrendingUp, FiShoppingBag, FiDollarSign, FiPackage, FiDownload, FiCheckCircle, FiClock } from 'react-icons/fi';
 import toast from 'react-hot-toast';
 import api from '../api';
 
@@ -97,20 +97,23 @@ export default function AnalyticsPanel({ role = 'admin' }) {
 
     if (summary) {
       lines.push('ПІДСУМКИ');
-      lines.push(`Виручка:,${summary.revenue} ₴`);
+      lines.push(`Сума замовлень:,${summary.revenue} ₴`);
       lines.push(`Замовлень:,${summary.totalOrders}`);
       lines.push(`Успішних:,${summary.successOrders}`);
       lines.push(`Скасованих:,${summary.cancelledOrders}`);
       lines.push(`Оплачених:,${summary.paidOrders}`);
       lines.push(`Сума оплачених:,${summary.paidRevenue} ₴`);
+      lines.push(`Неоплачених:,${summary.unpaidOrders || 0}`);
+      lines.push(`Сума неоплачених:,${summary.unpaidRevenue || 0} ₴`);
       lines.push(`Продано одиниць:,${summary.itemsSold}`);
       lines.push(`Середній чек:,${summary.avgCheck} ₴`);
+      lines.push(`Середній чек (оплачені):,${summary.avgPaidCheck || 0} ₴`);
       lines.push('');
     }
 
     if (topProducts.length > 0) {
       lines.push('ТОП ТОВАРИ');
-      lines.push('Товар,Категорія,Продано шт,Виручка,Замовлень');
+      lines.push('Товар,Категорія,Продано шт,Сума замовлень,Замовлень');
       topProducts.forEach(p => {
         lines.push(`"${p.name}","${p.category || ''}",${p.totalQty},${p.totalRevenue},${p.orderCount}`);
       });
@@ -119,7 +122,7 @@ export default function AnalyticsPanel({ role = 'admin' }) {
 
     if (categories.length > 0) {
       lines.push('КАТЕГОРІЇ');
-      lines.push('Категорія,Продано шт,Виручка');
+      lines.push('Категорія,Продано шт,Сума замовлень');
       categories.forEach(c => {
         lines.push(`"${c.category}",${c.totalQty},${c.totalRevenue}`);
       });
@@ -227,13 +230,15 @@ export default function AnalyticsPanel({ role = 'admin' }) {
       ) : (
         <>
           {summary && (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 mb-6">
-              <StatCard icon={FiDollarSign} label="Виручка" value={formatMoney(summary.revenue)} sub={`${summary.successOrders} замовлень`} />
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 mb-6">
+              <StatCard icon={FiDollarSign} label="Сума замовлень" value={formatMoney(summary.revenue)} sub={`${summary.successOrders} активних`} />
               <StatCard icon={FiShoppingBag} label="Замовлень" value={summary.totalOrders} sub={`${summary.cancelledOrders} скасовано`} />
-              <StatCard icon={FiCheckCircle} label="Оплачених" value={summary.paidOrders} sub="замовлень" color="text-green-600 dark:text-green-400" />
-              <StatCard icon={FiDollarSign} label="Сума оплачених" value={formatMoney(summary.paidRevenue || 0)} sub="оплачені замовлення" color="text-green-600 dark:text-green-400" />
+              <StatCard icon={FiCheckCircle} label="Оплачених" value={summary.paidOrders} sub={formatMoney(summary.paidRevenue || 0)} color="text-green-600 dark:text-green-400" />
+              <StatCard icon={FiClock} label="Неоплачених" value={summary.unpaidOrders || 0} sub={formatMoney(summary.unpaidRevenue || 0)} color="text-amber-600 dark:text-amber-400" />
+              <StatCard icon={FiDollarSign} label="Сума оплачених" value={formatMoney(summary.paidRevenue || 0)} sub={`${summary.paidOrders} замовлень`} color="text-green-600 dark:text-green-400" />
+              <StatCard icon={FiDollarSign} label="Сума неоплачених" value={formatMoney(summary.unpaidRevenue || 0)} sub={`${summary.unpaidOrders || 0} замовлень`} color="text-amber-600 dark:text-amber-400" />
               <StatCard icon={FiPackage} label="Продано" value={`${summary.itemsSold} шт`} sub="одиниць товару" />
-              <StatCard icon={FiTrendingUp} label="Сер. чек" value={formatMoney(summary.avgCheck)} />
+              <StatCard icon={FiTrendingUp} label="Сер. чек" value={formatMoney(summary.avgCheck)} sub={`оплачені: ${formatMoney(summary.avgPaidCheck || 0)}`} />
             </div>
           )}
 
@@ -255,7 +260,7 @@ export default function AnalyticsPanel({ role = 'admin' }) {
               ) : (
                 <div className="space-y-6">
                   <div>
-                    <p className="text-gray-400 dark:text-white/30 text-[10px] mb-2">Виручка (₴)</p>
+                    <p className="text-gray-400 dark:text-white/30 text-[10px] mb-2">Сума: оплачені / неоплачені (₴)</p>
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chart.data}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
@@ -264,10 +269,12 @@ export default function AnalyticsPanel({ role = 'admin' }) {
                         <Tooltip
                           contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }}
                           labelStyle={{ color: '#94a3b8' }}
-                          formatter={(val) => [formatMoney(val), 'Виручка']}
+                          formatter={(val, name) => [formatMoney(val), name]}
                           labelFormatter={(v) => formatPeriodLabel(v, chart.groupBy)}
                         />
-                        <Bar dataKey="revenue" fill="#f59e0b" radius={[6, 6, 0, 0]} />
+                        <Legend wrapperStyle={{ fontSize: 11 }} />
+                        <Bar dataKey="paidRevenue" name="Оплачені" fill="#10b981" radius={[4, 4, 0, 0]} stackId="sum" />
+                        <Bar dataKey="unpaidRevenue" name="Неоплачені" fill="#f59e0b" radius={[4, 4, 0, 0]} stackId="sum" />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -282,7 +289,9 @@ export default function AnalyticsPanel({ role = 'admin' }) {
                           contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }}
                           labelFormatter={(v) => formatPeriodLabel(v, chart.groupBy)}
                         />
-                        <Line type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Замовлення" />
+                        <Line type="monotone" dataKey="orders" stroke="#3b82f6" strokeWidth={2} dot={{ r: 3 }} name="Усього" />
+                        <Line type="monotone" dataKey="paidOrders" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="Оплачені" />
+                        <Line type="monotone" dataKey="unpaidOrders" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Неоплачені" />
                         <Line type="monotone" dataKey="cancelled" stroke="#ef4444" strokeWidth={1.5} dot={{ r: 2 }} name="Скасовано" strokeDasharray="4 4" />
                         <Legend iconType="line" wrapperStyle={{ fontSize: 11 }} />
                       </LineChart>
@@ -307,7 +316,7 @@ export default function AnalyticsPanel({ role = 'admin' }) {
                       <YAxis type="category" dataKey="name" tick={{ fill: '#d1d5db', fontSize: 10 }} width={100} />
                       <Tooltip
                         contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }}
-                        formatter={(val) => [formatMoney(val), 'Виручка']}
+                        formatter={(val) => [formatMoney(val), 'Сума замовлень']}
                       />
                       <Bar dataKey="totalRevenue" fill="#3b82f6" radius={[0, 6, 6, 0]} />
                     </BarChart>
@@ -357,7 +366,7 @@ export default function AnalyticsPanel({ role = 'admin' }) {
                       </Pie>
                       <Tooltip
                         contentStyle={{ background: '#1e293b', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 12, fontSize: 12 }}
-                        formatter={(val) => [formatMoney(val), 'Виручка']}
+                        formatter={(val) => [formatMoney(val), 'Сума замовлень']}
                       />
                     </PieChart>
                   </ResponsiveContainer>

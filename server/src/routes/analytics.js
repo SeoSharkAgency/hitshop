@@ -94,10 +94,20 @@ router.get('/summary', async (req, res) => {
     });
 
     const paidWhere = { ...where, paymentStatus: 'paid' };
+    const unpaidWhere = {
+      ...whereSuccess,
+      paymentStatus: { [Op.ne]: 'paid' },
+    };
     const paidOrders = await Order.count({ where: paidWhere });
+    const unpaidOrders = await Order.count({ where: unpaidWhere });
     const paidRevenueResult = await Order.findOne({
       where: paidWhere,
       attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('total')), 0), 'paidRevenue']],
+      raw: true,
+    });
+    const unpaidRevenueResult = await Order.findOne({
+      where: unpaidWhere,
+      attributes: [[sequelize.fn('COALESCE', sequelize.fn('SUM', sequelize.col('total')), 0), 'unpaidRevenue']],
       raw: true,
     });
 
@@ -112,17 +122,24 @@ router.get('/summary', async (req, res) => {
       type: sequelize.QueryTypes.SELECT,
     });
 
-    const avgCheck = successOrders > 0 ? (parseFloat(revenueResult.revenue) / successOrders) : 0;
+    const paidRevenue = parseFloat(paidRevenueResult?.paidRevenue) || 0;
+    const unpaidRevenue = parseFloat(unpaidRevenueResult?.unpaidRevenue) || 0;
+    const revenue = parseFloat(revenueResult.revenue) || 0;
+    const avgCheck = successOrders > 0 ? (revenue / successOrders) : 0;
+    const avgPaidCheck = paidOrders > 0 ? (paidRevenue / paidOrders) : 0;
 
     res.json({
       totalOrders,
       successOrders,
       cancelledOrders,
       paidOrders,
-      paidRevenue: parseFloat(paidRevenueResult?.paidRevenue) || 0,
-      revenue: parseFloat(revenueResult.revenue) || 0,
+      unpaidOrders,
+      paidRevenue,
+      unpaidRevenue,
+      revenue,
       itemsSold: parseInt(itemsResult[0]?.total) || 0,
       avgCheck: Math.round(avgCheck),
+      avgPaidCheck: Math.round(avgPaidCheck),
       period,
       from: from.toISOString(),
       to: to.toISOString(),
@@ -157,6 +174,10 @@ router.get('/chart', async (req, res) => {
         TO_CHAR("createdAt", :dateFormat) as period,
         COUNT(*) as orders,
         COALESCE(SUM(CASE WHEN status != 'cancelled' THEN total ELSE 0 END), 0) as revenue,
+        COALESCE(SUM(CASE WHEN "payment_status" = 'paid' THEN total ELSE 0 END), 0) as "paidRevenue",
+        COALESCE(SUM(CASE WHEN status != 'cancelled' AND "payment_status" != 'paid' THEN total ELSE 0 END), 0) as "unpaidRevenue",
+        COUNT(CASE WHEN "payment_status" = 'paid' THEN 1 END) as "paidOrders",
+        COUNT(CASE WHEN status != 'cancelled' AND "payment_status" != 'paid' THEN 1 END) as "unpaidOrders",
         COUNT(CASE WHEN status = 'cancelled' THEN 1 END) as cancelled
       FROM orders
       WHERE "createdAt" BETWEEN :from AND :to
@@ -171,6 +192,10 @@ router.get('/chart', async (req, res) => {
       period: r.period,
       orders: parseInt(r.orders),
       revenue: parseFloat(r.revenue),
+      paidRevenue: parseFloat(r.paidRevenue),
+      unpaidRevenue: parseFloat(r.unpaidRevenue),
+      paidOrders: parseInt(r.paidOrders),
+      unpaidOrders: parseInt(r.unpaidOrders),
       cancelled: parseInt(r.cancelled),
     }));
 
