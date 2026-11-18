@@ -123,15 +123,13 @@ function startDailyReport() {
 
       const deliveredYesterday = await Order.count({
         where: {
-          status: 'delivered',
-          updatedAt: { [Op.gte]: yesterdayStart, [Op.lt]: todayStart },
+          deliveredAt: { [Op.gte]: yesterdayStart, [Op.lt]: todayStart },
         },
       });
 
       const paidYesterday = await Order.count({
         where: {
-          paymentStatus: 'paid',
-          updatedAt: { [Op.gte]: yesterdayStart, [Op.lt]: todayStart },
+          paidAt: { [Op.gte]: yesterdayStart, [Op.lt]: todayStart },
         },
       });
 
@@ -210,6 +208,7 @@ async function checkDeliveryStatuses() {
       const newStatus = STATUS_MAP[String(doc.StatusCode)];
       if (newStatus && order.status !== newStatus) {
         order.status = newStatus;
+        if (newStatus === 'delivered') order.deliveredAt = new Date();
         await order.save();
         notifyStatusChange(order, 'delivery', `${doc.Status}`, 'Нова Пошта (авто)');
       }

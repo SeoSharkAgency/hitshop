@@ -386,6 +386,7 @@ router.post('/webhook', async (req, res) => {
 
       if (newOrderStatus && order.status !== newOrderStatus) {
         order.status = newOrderStatus;
+        if (newOrderStatus === 'delivered') order.deliveredAt = new Date();
         await order.save();
         notifyStatusChange(order, 'delivery', `${status} (НП код: ${statusCode})`, 'Нова Пошта');
       }

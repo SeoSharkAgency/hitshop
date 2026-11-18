@@ -71,6 +71,16 @@ const Order = sequelize.define('Order', {
     type: DataTypes.TEXT,
     allowNull: true,
   },
+  paidAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'paid_at',
+  },
+  deliveredAt: {
+    type: DataTypes.DATE,
+    allowNull: true,
+    field: 'delivered_at',
+  },
   userId: {
     type: DataTypes.INTEGER,
     allowNull: true,

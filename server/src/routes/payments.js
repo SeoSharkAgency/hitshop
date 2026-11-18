@@ -83,6 +83,7 @@ router.post('/callback', async (req, res) => {
     }
 
     if (transactionStatus === 'Approved') {
+      if (order.paymentStatus !== 'paid') order.paidAt = new Date();
       order.paymentStatus = 'paid';
       order.status = 'processing';
     } else if (transactionStatus === 'Declined' || transactionStatus === 'Expired') {

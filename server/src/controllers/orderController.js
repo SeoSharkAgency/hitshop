@@ -369,23 +369,37 @@ exports.updateStatus = async (req, res) => {
       return res.status(403).json({ error: 'Недостатньо прав для зміни ТТН' });
     }
 
-    if (status && canOrderStatus) order.status = status;
-    if (paymentStatus && canPaymentStatus) order.paymentStatus = paymentStatus;
+    const prevStatus = order.status;
+    const prevPayment = order.paymentStatus;
+    const now = new Date();
+
+    if (status && canOrderStatus && status !== prevStatus) {
+      order.status = status;
+      if (status === 'delivered') order.deliveredAt = now;
+    }
+    if (paymentStatus && canPaymentStatus && paymentStatus !== prevPayment) {
+      order.paymentStatus = paymentStatus;
+      if (paymentStatus === 'paid') order.paidAt = now;
+    }
     if (ttnNumber !== undefined && canTtn) {
       order.ttnNumber = ttnNumber ? String(ttnNumber).slice(0, 50) : null;
     }
     await order.save();
 
+    const statusChanged = status && canOrderStatus && status !== prevStatus;
+    const paymentChanged = paymentStatus && canPaymentStatus && paymentStatus !== prevPayment;
+    const ttnChanged = ttnNumber !== undefined && canTtn;
+
     const changes = [];
-    if (status && canOrderStatus) changes.push(`статус → ${status}`);
-    if (paymentStatus && canPaymentStatus) changes.push(`оплата → ${paymentStatus}`);
-    if (ttnNumber !== undefined && canTtn) changes.push(ttnNumber ? `ТТН → ${ttnNumber}` : 'ТТН видалено');
+    if (statusChanged) changes.push(`статус → ${status}`);
+    if (paymentChanged) changes.push(`оплата → ${paymentStatus}`);
+    if (ttnChanged) changes.push(ttnNumber ? `ТТН → ${ttnNumber}` : 'ТТН видалено');
     if (changes.length) {
       logAction(req, 'update', 'order', order.id, `${order.orderNumber}: ${changes.join(', ')}`);
     }
 
-    if (status && canOrderStatus) notifyStatusChange(order, 'status', status, req.adminUsername);
-    if (paymentStatus && canPaymentStatus) notifyStatusChange(order, 'paymentStatus', paymentStatus, req.adminUsername);
+    if (statusChanged) notifyStatusChange(order, 'status', status, req.adminUsername);
+    if (paymentChanged) notifyStatusChange(order, 'paymentStatus', paymentStatus, req.adminUsername);
 
     const fullOrder = await Order.findByPk(order.id, {
       include: [{ model: OrderItem, as: 'items', include: [Product] }],
